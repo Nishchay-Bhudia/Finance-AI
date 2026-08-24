@@ -7,6 +7,5 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "types": ["node"]
-  },
-  "include": ["server.ts", "lib/**/*.ts", "tools/**/*.ts"]
+  }
 }
