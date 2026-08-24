@@ -8,12 +8,3 @@ You: "give me a report on Tesla's recent earnings"
         |
 You: "turn that into a PDF"
         |
-   calls a tool -> writes a PDF file -> saved locally, download link shown
-
-
-pdf and csv tools are pretty much the same
-ai.ts - standard
-public - all ai done , its just html
-tools - written by me so they will need alot of debugging
-search.ts uses valyu deep research
-server.ts - pulls front and backend together 
