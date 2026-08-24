@@ -10,5 +10,14 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@daytona/sdk": "^0.207.0",
+    "ai": "^7.0.77",
+    "ai-sdk-ollama": "^4.2.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "pdfkit": "^0.20.1",
+    "zod": "^4.4.3"
+  }
 }
