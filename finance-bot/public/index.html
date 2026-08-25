@@ -421,3 +421,15 @@
       log.scrollTop = log.scrollHeight;
       return row;
     }
+
+    function addUserMessage(text) {
+      clearEmptyState();
+      const msg = document.createElement('div');
+      msg.className = 'msg';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      msg.appendChild(bubble);
+      addRow('user', msg);
+    }
+
