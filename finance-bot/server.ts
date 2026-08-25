@@ -129,3 +129,12 @@ Rules:
       const gotCsv = !requestedCsv || files.some((file) => file.endsWith('.csv'));
       const gotGraph = !requestedGraph || images.length > 0;
       if (gotPdf && gotCsv && gotGraph) break;
+
+      if (attempt < MAX_ATTEMPTS) {
+        const invalidCall = (await result.toolCalls).find((call: any) => call.invalid);
+        const problem = invalidCall
+          ? describeInvalidToolCall(invalidCall)
+          : `You did not finish the selected deliverables (${deliverables.join(', ')}). Call the required tool now, using the real numbers from the search results above. Do not reply with plain text.`;
+
+        modelMessages = [...modelMessages, { role: 'user', content: problem }];
+      }
