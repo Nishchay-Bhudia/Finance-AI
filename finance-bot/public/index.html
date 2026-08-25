@@ -197,3 +197,26 @@
     padding: 2px 0;
   }
 
+  .searching {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 6px 10px;
+    border-radius: 7px;
+    width: fit-content;
+  }
+
+  .searching .spin {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    border: 1.5px solid var(--accent);
+    border-top-color: transparent;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
