@@ -32,3 +32,17 @@ export async function searchFinanceData(query: string) {
   }
 
   const data = await res.json() as { results?: { title: string; url: string; content: string }[] };
+
+  // We're running a small local model with a limited context window. Valyu's
+  // raw results include the full scraped page text per result, which is way
+  // more than the model needs (or can even fit) to pull out a few figures.
+  // Keep only what matters, and cap each result's content so the whole
+  // payload stays small.
+  const results = (data.results ?? []).map((result) => ({
+    title: result.title,
+    url: result.url,
+    content: result.content.slice(0, 1000),
+  }));
+
+  return { results };
+}
