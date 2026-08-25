@@ -493,3 +493,69 @@
       if (el) el.closest('.row').remove();
     }
 
+    async function send(message) {
+      addUserMessage(message);
+      input.value = '';
+      input.disabled = true;
+      sendBtn.disabled = true;
+      statusPill.innerHTML = '<span class="status-dot" style="background:#f59e0b"></span>working';
+      addSearchingIndicator();
+
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message,
+            deliverables: Array.from(deliverableInputs).filter(input => input.checked).map(input => input.value),
+          }),
+        });
+        removeSearchingIndicator();
+        if (!res.ok || !res.body) throw new Error('The server did not return a response.');
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let text = '';
+        let files = [];
+        let images = [];
+        let usedSearch = false;
+
+        while (true) {
+          const { value, done } = await reader.read();
+          buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+          const events = buffer.split('\n\n');
+          buffer = events.pop() || '';
+
+          for (const event of events) {
+            const type = event.match(/^event: (.+)$/m)?.[1];
+            const payload = event.match(/^data: (.+)$/m)?.[1];
+            if (!payload) continue;
+            const data = JSON.parse(payload);
+
+            if (type === 'text') text += data;
+            if (type === 'done') {
+              text = data.text || text;
+              files = data.files || [];
+              images = data.images || [];
+              usedSearch = data.usedSearch;
+            }
+            if (type === 'error') throw new Error(data);
+          }
+
+          if (done) break;
+        }
+
+        addAssistantMessage(text || 'No response.', files, usedSearch, images);
+      } catch (err) {
+        removeSearchingIndicator();
+        addAssistantMessage(err.message || 'Something went wrong reaching the server.');
+      } finally {
+        input.disabled = false;
+        sendBtn.disabled = false;
+        deliverableInputs.forEach(input => { input.checked = false; });
+        statusPill.innerHTML = '<span class="status-dot"></span>ready';
+        input.focus();
+      }
+    }
+
