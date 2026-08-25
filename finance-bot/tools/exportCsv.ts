@@ -18,24 +18,3 @@ export const exportCsv = tool({
     ).describe('One object per row of the CSV'),
     graphFilename: z.string().optional().describe('The PNG filename returned by generateGraph'),
   }),
-  execute: async ({ title, rows, graphFilename }) => {
-    if (!existsSync(outputDir)) {
-      mkdirSync(outputDir);
-    }
-
-    const safeName = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const filename = `${safeName}-${Date.now()}.csv`;
-    const filepath = `${outputDir}/${filename}`;
-
-    const escape = (value: string) => `"${value.replaceAll('"', '""')}"`;
-    const header = 'label,value';
-    const lines = rows.map(row => `${escape(row.label)},${escape(row.value)}`);
-    const currentGraph = graphFilename ?? latestGraphFilename;
-    if (currentGraph) lines.push(`${escape('graph_file')},${escape(currentGraph)}`);
-    const csv = [header, ...lines].join('\n');
-
-    writeFileSync(filepath, csv);
-
-    return { filename, path: filepath };
-  },
-});
