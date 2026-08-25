@@ -433,3 +433,47 @@
       addRow('user', msg);
     }
 
+    function addAssistantMessage(text, files, usedSearch, images) {
+      const msg = document.createElement('div');
+      msg.className = 'msg';
+
+      if (usedSearch) {
+        const tag = document.createElement('div');
+        tag.className = 'sources-tag';
+        tag.textContent = 'Grounded by search';
+        msg.appendChild(tag);
+      }
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      msg.appendChild(bubble);
+
+      if (files && files.length) {
+        const fileRow = document.createElement('div');
+        fileRow.className = 'files';
+        files.forEach(f => {
+          const ext = f.split('.').pop().toUpperCase();
+          const a = document.createElement('a');
+          a.className = 'file-chip';
+          a.href = '/outputs/' + f;
+          a.target = '_blank';
+          a.innerHTML = '<span class="ext">' + ext + '</span>' + f;
+          fileRow.appendChild(a);
+        });
+        msg.appendChild(fileRow);
+      }
+
+      if (images && images.length) {
+        images.forEach(image => {
+          const chart = document.createElement('img');
+          chart.className = 'chat-image';
+          chart.src = '/outputs/' + image;
+          chart.alt = 'Generated financial graph';
+          msg.appendChild(chart);
+        });
+      }
+
+      addRow('assistant', msg);
+    }
+
