@@ -173,3 +173,27 @@
     flex-shrink: 0;
   }
 
+  .msg {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 82%;
+  }
+
+  .bubble {
+    font-size: 14px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+  }
+
+  .row.user .bubble {
+    background: var(--accent);
+    color: white;
+    padding: 10px 14px;
+    border-radius: 12px 12px 3px 12px;
+  }
+
+  .row.assistant .bubble {
+    padding: 2px 0;
+  }
+
