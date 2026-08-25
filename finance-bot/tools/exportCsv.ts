@@ -18,3 +18,12 @@ export const exportCsv = tool({
     ).describe('One object per row of the CSV'),
     graphFilename: z.string().optional().describe('The PNG filename returned by generateGraph'),
   }),
+  execute: async ({ title, rows, graphFilename }) => {
+    if (!existsSync(outputDir)) {
+      mkdirSync(outputDir);
+    }
+
+    const safeName = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const filename = `${safeName}-${Date.now()}.csv`;
+    const filepath = `${outputDir}/${filename}`;
+
