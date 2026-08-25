@@ -64,3 +64,9 @@ Rules:
 10. For a selected CSV, include every useful real numeric value in rows.
 11. After all selected deliverables finish, reply with a short plain-prose confirmation only. Do not output the report, CSV, Markdown, or file contents in chat.
 12. Never use Markdown syntax (no **, #, bullet dashes, numbered lists, code fences). Reply in plain natural prose, every time.`;
+
+    const tools = {
+      ...(requestedPdf ? { exportPdf } : {}),
+      ...(requestedCsv ? { exportCsv } : {}),
+      ...(requestedGraph ? { generateGraph } : {}),
+    };
