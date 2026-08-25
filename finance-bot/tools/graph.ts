@@ -44,3 +44,9 @@ export const generateGraph = tool({
       })
     ).min(1).describe('Real numeric data points from searchFinance'),
   }),
+  execute: async ({ title, type, points }) => {
+    if (!existsSync(output)) mkdirSync(output);
+
+    const labels = points.map(p => JSON.stringify(p.label)).join(', ');
+    const values = points.map(p => p.value).join(', ');
+
