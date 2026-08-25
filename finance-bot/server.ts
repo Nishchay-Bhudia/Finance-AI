@@ -122,3 +122,10 @@ Rules:
           files.push(output.filename);
         }
       }
+
+      if (!requestedOutput) break;
+
+      const gotPdf = !requestedPdf || files.some((file) => file.endsWith('.pdf'));
+      const gotCsv = !requestedCsv || files.some((file) => file.endsWith('.csv'));
+      const gotGraph = !requestedGraph || images.length > 0;
+      if (gotPdf && gotCsv && gotGraph) break;
