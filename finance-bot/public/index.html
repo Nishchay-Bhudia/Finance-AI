@@ -240,3 +240,25 @@
     background: #22c55e;
   }
 
+  .files {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .file-chip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    text-decoration: none;
+  }
+
+  .file-chip:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
