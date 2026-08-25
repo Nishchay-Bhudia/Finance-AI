@@ -80,3 +80,9 @@ plt.savefig('graph.png')
       latestGraphFilename = filename;
 
       return { filename };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { error: `graph generation failed: ${message}` };
+    }
+  },
+});
