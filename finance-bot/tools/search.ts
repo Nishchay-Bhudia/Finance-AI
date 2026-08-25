@@ -9,3 +9,20 @@ export const searchFinance = tool({
   }),
   execute: async ({ query }) => searchFinanceData(query),
 });
+
+export async function searchFinanceData(query: string) {
+  const searchQuery = `${query}. Return actual financial figures and current news in the result content. Do not return only source metadata, result costs, relevance scores, or character counts.`;
+
+  const res = await fetch('https://api.valyu.network/v1/deepsearch', {
+    method: 'POST',
+    signal: AbortSignal.timeout(30000),
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.VALYU_API_KEY!,
+    },
+    body: JSON.stringify({
+      query: searchQuery,
+      search_type: 'all',
+      max_num_results: 5,
+    }),
+  });
