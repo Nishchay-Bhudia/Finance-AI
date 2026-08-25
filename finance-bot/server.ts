@@ -89,3 +89,13 @@ Rules:
     // sometimes replies in plain text instead of calling a tool, or gets a
     // field name wrong. If that happens for a deliverable request, tell it
     // exactly what went wrong and give it another attempt.
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const result = streamText({
+        model,
+        instructions,
+        ...(requestedOutput ? { tools, toolChoice: 'required' as const } : {}),
+        maxRetries: 0,
+        stopWhen: stepCountIs(20),
+        messages: modelMessages,
+      });
