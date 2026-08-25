@@ -70,3 +70,11 @@ Rules:
       ...(requestedCsv ? { exportCsv } : {}),
       ...(requestedGraph ? { generateGraph } : {}),
     };
+
+    let modelMessages: ChatMessage[] = [
+      ...messages.slice(0, -1),
+      {
+        role: 'user',
+        content: `${message}\n\nFresh search results for this request. The selected deliverables are ${deliverables.join(', ') || 'none'}. Use these results for this request and do not use facts from older requests:\n${JSON.stringify(searchData)}`,
+      },
+    ];
