@@ -108,3 +108,45 @@
     gap: 20px;
   }
 
+  .empty-state {
+    margin: auto;
+    text-align: center;
+    color: var(--muted);
+    padding: 60px 20px;
+  }
+
+  .empty-state .mark-lg {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: white;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+  }
+
+  .empty-state p { font-size: 13.5px; margin: 4px 0; }
+  .empty-state .examples {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+  .example-chip {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    cursor: pointer;
+    background: var(--surface);
+  }
+  .example-chip:hover { border-color: var(--accent); color: var(--accent); }
+
