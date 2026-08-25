@@ -15,3 +15,11 @@ export const exportPdf = tool({
     content: z.string().describe('The full body text to put in the PDF'),
     imageFilename: z.string().optional().describe('The PNG filename returned by generateGraph, if a graph was requested'),
   }),
+  execute: async ({ title, content, imageFilename }) => {
+    if (!existsSync(OUTPUT_DIR)) {
+      mkdirSync(OUTPUT_DIR);
+    }
+
+    const safeName = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const filename = `${safeName}-${Date.now()}.pdf`;
+    const filepath = `${OUTPUT_DIR}/${filename}`;
