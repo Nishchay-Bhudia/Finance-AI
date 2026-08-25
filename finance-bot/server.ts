@@ -13,3 +13,6 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 app.use('/outputs', express.static('outputs'));
+
+type ChatMessage = { role: 'user' | 'assistant'; content: string };
+const messages: ChatMessage[] = [];
