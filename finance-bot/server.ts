@@ -46,3 +46,6 @@ app.post('/chat', async (req: Request, res: Response) => {
   const send = (event: string, data: unknown) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
+
+  try {
+    const searchData = await searchFinanceData(message);
