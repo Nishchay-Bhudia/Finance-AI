@@ -26,3 +26,7 @@ export async function searchFinanceData(query: string) {
       max_num_results: 5,
     }),
   });
+
+  if (!res.ok) {
+    return { error: `Valyu request failed: ${res.status}` };
+  }
