@@ -30,3 +30,5 @@ export async function searchFinanceData(query: string) {
   if (!res.ok) {
     return { error: `Valyu request failed: ${res.status}` };
   }
+
+  const data = await res.json() as { results?: { title: string; url: string; content: string }[] };
