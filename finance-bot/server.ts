@@ -99,3 +99,10 @@ Rules:
         stopWhen: stepCountIs(20),
         messages: modelMessages,
       });
+
+      text = '';
+      for await (const chunk of result.textStream) {
+        text += chunk;
+        if (!requestedOutput) send('text', chunk);
+      }
+      if (!text) text = await result.text;
