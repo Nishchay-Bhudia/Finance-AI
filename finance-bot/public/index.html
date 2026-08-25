@@ -287,3 +287,33 @@
     padding: 14px 20px 24px;
   }
 
+  .deliverables {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .deliverables label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .deliverables input { accent-color: var(--accent); }
+
+  form {
+    display: flex;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px 6px 6px 14px;
+  }
+
+  form:focus-within { border-color: var(--accent); background: white; }
+
