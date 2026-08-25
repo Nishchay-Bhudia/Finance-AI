@@ -391,3 +391,13 @@
     <div class="disclaimer">Data sourced live via Valyu. Not financial advice.</div>
   </footer>
 
+  <script>
+    const log = document.getElementById('log');
+    const emptyState = document.getElementById('empty-state');
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('send-btn');
+    const statusPill = document.querySelector('.status-pill');
+    const deliverableInputs = document.querySelectorAll('.deliverables input');
+    deliverableInputs.forEach(input => { input.checked = false; });
+
