@@ -23,3 +23,7 @@ export const exportPdf = tool({
     const safeName = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const filename = `${safeName}-${Date.now()}.pdf`;
     const filepath = `${OUTPUT_DIR}/${filename}`;
+
+    // generateGraph sets latestGraphFilename right before this tool usually
+    // gets called, so that's the fallback if the model forgets to pass it.
+    const graphFilename = imageFilename ?? latestGraphFilename;
