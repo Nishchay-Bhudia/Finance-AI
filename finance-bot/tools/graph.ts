@@ -70,3 +70,13 @@ plt.title(${JSON.stringify(title)})
 plt.tight_layout()
 plt.savefig('graph.png')
 `;
+
+    try {
+      const fileBuffer = await runPythonAndDownloadFile(pythonCode, 'graph.png');
+
+      const safeName = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const filename = `${safeName}-${Date.now()}.png`;
+      writeFileSync(`${output}/${filename}`, fileBuffer);
+      latestGraphFilename = filename;
+
+      return { filename };
