@@ -401,3 +401,23 @@
     const deliverableInputs = document.querySelectorAll('.deliverables input');
     deliverableInputs.forEach(input => { input.checked = false; });
 
+    function clearEmptyState() {
+      if (emptyState) emptyState.remove();
+    }
+
+    function addRow(role, contentEl) {
+      const row = document.createElement('div');
+      row.className = 'row ' + role;
+
+      if (role === 'assistant') {
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        avatar.textContent = 'V';
+        row.appendChild(avatar);
+      }
+
+      row.appendChild(contentEl);
+      log.appendChild(row);
+      log.scrollTop = log.scrollHeight;
+      return row;
+    }
