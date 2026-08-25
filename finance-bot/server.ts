@@ -106,3 +106,19 @@ Rules:
         if (!requestedOutput) send('text', chunk);
       }
       if (!text) text = await result.text;
+
+      files.length = 0;
+      images.length = 0;
+      errors.length = 0;
+      for (const toolResult of await result.toolResults) {
+        if (!toolResult) continue;
+        const output = toolResult.output as { filename?: string; error?: string };
+        if (output?.error) errors.push(`${toolResult.toolName}: ${output.error}`);
+        if (!output?.filename) continue;
+
+        if (toolResult.toolName === 'generateGraph') {
+          images.push(output.filename);
+        } else {
+          files.push(output.filename);
+        }
+      }
