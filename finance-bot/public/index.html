@@ -559,3 +559,16 @@
       }
     }
 
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const message = input.value.trim();
+      if (message) send(message);
+    });
+
+    document.querySelectorAll('.example-chip').forEach(chip => {
+      chip.addEventListener('click', () => send(chip.dataset.q));
+    });
+  </script>
+
+</body>
+</html>
