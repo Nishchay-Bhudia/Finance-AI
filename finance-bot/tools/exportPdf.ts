@@ -51,3 +51,7 @@ export const exportPdf = tool({
       stream.on('finish', () => resolve());
       stream.on('error', reject);
     });
+
+    return { filename, path: filepath };
+  },
+});
