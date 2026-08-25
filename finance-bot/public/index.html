@@ -220,3 +220,23 @@
 
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  .sources-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: 4px 9px;
+    border-radius: 6px;
+    width: fit-content;
+  }
+
+  .sources-tag::before {
+    content: "";
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #22c55e;
+  }
+
