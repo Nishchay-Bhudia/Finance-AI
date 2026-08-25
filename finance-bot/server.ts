@@ -138,3 +138,6 @@ Rules:
 
         modelMessages = [...modelMessages, { role: 'user', content: problem }];
       }
+    }
+
+    messages.push({ role: 'assistant', content: text });
