@@ -317,3 +317,37 @@
 
   form:focus-within { border-color: var(--accent); background: white; }
 
+  input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+
+  input::placeholder { color: var(--muted); }
+
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0 16px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  .disclaimer {
+    text-align: center;
+    font-size: 10.5px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+
+  main::-webkit-scrollbar { width: 8px; }
+  main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
