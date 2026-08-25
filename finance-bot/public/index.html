@@ -477,3 +477,19 @@
       addRow('assistant', msg);
     }
 
+    function addSearchingIndicator() {
+      const msg = document.createElement('div');
+      msg.className = 'msg';
+      msg.id = 'searching-indicator';
+      const tag = document.createElement('div');
+      tag.className = 'searching';
+      tag.innerHTML = '<span class="spin"></span>researching…';
+      msg.appendChild(tag);
+      addRow('assistant', msg);
+    }
+
+    function removeSearchingIndicator() {
+      const el = document.getElementById('searching-indicator');
+      if (el) el.closest('.row').remove();
+    }
+
