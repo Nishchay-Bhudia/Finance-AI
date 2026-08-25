@@ -35,3 +35,7 @@ export const exportCsv = tool({
     const csv = [header, ...lines].join('\n');
 
     writeFileSync(filepath, csv);
+
+    return { filename, path: filepath };
+  },
+});
