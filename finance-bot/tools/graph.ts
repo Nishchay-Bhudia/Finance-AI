@@ -50,3 +50,23 @@ export const generateGraph = tool({
     const labels = points.map(p => JSON.stringify(p.label)).join(', ');
     const values = points.map(p => p.value).join(', ');
 
+    const pythonCode = `
+
+import matplotlib
+
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+labels = [${labels}]
+values = [${values}]
+
+plt.figure(figsize=(6, 4))
+if "${type}" == "bar":
+    plt.bar(labels, values)
+else:
+    plt.plot(labels, values, marker='o')
+
+plt.title(${JSON.stringify(title)})
+plt.tight_layout()
+plt.savefig('graph.png')
+`;
