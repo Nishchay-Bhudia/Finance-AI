@@ -27,3 +27,11 @@ export const exportCsv = tool({
     const filename = `${safeName}-${Date.now()}.csv`;
     const filepath = `${outputDir}/${filename}`;
 
+    const escape = (value: string) => `"${value.replaceAll('"', '""')}"`;
+    const header = 'label,value';
+    const lines = rows.map(row => `${escape(row.label)},${escape(row.value)}`);
+    const currentGraph = graphFilename ?? latestGraphFilename;
+    if (currentGraph) lines.push(`${escape('graph_file')},${escape(currentGraph)}`);
+    const csv = [header, ...lines].join('\n');
+
+    writeFileSync(filepath, csv);
