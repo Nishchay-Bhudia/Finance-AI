@@ -25,3 +25,20 @@ function describeInvalidToolCall(call: any): string {
   const schemaError = call.error?.cause?.cause?.message ?? call.error?.message;
   return `Your call to ${call.toolName} was invalid: ${schemaError ?? 'bad input'}. Fix it and call the tool again with the correct field names.`;
 }
+
+app.post('/chat', async (req: Request, res: Response) => {
+  const { message } = req.body;
+  const deliverables: string[] = Array.isArray(req.body.deliverables) ? req.body.deliverables : [];
+
+  const requestedPdf = deliverables.includes('pdf');
+  const requestedCsv = deliverables.includes('csv');
+  const requestedGraph = deliverables.includes('graph');
+  const requestedOutput = requestedPdf || requestedCsv || requestedGraph;
+
+  messages.push({ role: 'user', content: message });
+  resetLatestGraph();
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
