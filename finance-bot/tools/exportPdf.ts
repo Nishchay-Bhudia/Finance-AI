@@ -27,3 +27,27 @@ export const exportPdf = tool({
     // generateGraph sets latestGraphFilename right before this tool usually
     // gets called, so that's the fallback if the model forgets to pass it.
     const graphFilename = imageFilename ?? latestGraphFilename;
+
+    await new Promise<void>((resolve, reject) => {
+      const doc = new PDFDocument();
+      const stream = createWriteStream(filepath);
+
+      doc.pipe(stream);
+      doc.fontSize(20).text(title, { underline: true });
+      doc.moveDown();
+
+      const plainContent = content.replace(/\*\*/g, '').replace(/^#+\s*/gm, '').replace(/^-\s*/gm, '');
+      doc.fontSize(12).text(plainContent);
+
+      const imagePath = graphFilename ? join(OUTPUT_DIR, graphFilename) : undefined;
+      if (imagePath && existsSync(imagePath)) {
+        doc.moveDown();
+        doc.fontSize(14).text('Graph');
+        doc.image(imagePath, { fit: [500, 320], align: 'center' });
+      }
+
+      doc.end();
+
+      stream.on('finish', () => resolve());
+      stream.on('error', reject);
+    });
