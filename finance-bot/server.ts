@@ -156,3 +156,11 @@ Rules:
         ? 'Your selected deliverables are ready.'
         : `I could not complete the selected deliverables. ${errors.join(' ') || 'A required tool did not finish.'}`;
     }
+
+    send('done', { text: outputText, files, images, usedSearch: true });
+  } catch (error) {
+    send('error', error instanceof Error ? error.message : 'Something went wrong.');
+  } finally {
+    res.end();
+  }
+});
