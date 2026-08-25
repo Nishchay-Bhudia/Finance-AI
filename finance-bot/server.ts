@@ -78,3 +78,14 @@ Rules:
         content: `${message}\n\nFresh search results for this request. The selected deliverables are ${deliverables.join(', ') || 'none'}. Use these results for this request and do not use facts from older requests:\n${JSON.stringify(searchData)}`,
       },
     ];
+
+    let text = '';
+    const files: string[] = [];
+    const images: string[] = [];
+    const errors: string[] = [];
+
+    // Our local Ollama model doesn't actually honor toolChoice: 'required'
+    // (this provider just ignores it), and it's small enough that it
+    // sometimes replies in plain text instead of calling a tool, or gets a
+    // field name wrong. If that happens for a deliverable request, tell it
+    // exactly what went wrong and give it another attempt.
