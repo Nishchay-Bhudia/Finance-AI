@@ -30,3 +30,17 @@ async function runPythonAndDownloadFile(code: string, resultFilename: string) {
     await sandbox.delete();
   }
 }
+
+export const generateGraph = tool({
+  description:
+    'Generate a graph image from structured data. Call this only after searchFinance returns real numeric figures. Always provide a chart type and at least one point with a label and number. Do not call this with empty points or invented values.',
+  inputSchema: z.object({
+    title: z.string().describe('Chart title , make it relevant to the figures of the chart'),
+    type: z.enum(['bar', 'line']).describe('The field must be named "type" (not "chartType"). Use bar for comparing figures and line for figures over time'),
+    points: z.array(
+      z.object({
+        label: z.string().describe('e.g. a company name or date'),
+        value: z.number().describe('The numerical value to plot'),
+      })
+    ).min(1).describe('Real numeric data points from searchFinance'),
+  }),
