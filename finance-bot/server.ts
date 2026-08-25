@@ -141,3 +141,18 @@ Rules:
     }
 
     messages.push({ role: 'assistant', content: text });
+
+    let outputText: string;
+    if (!requestedOutput) {
+      // The system prompt already tells the model to stay markdown-free,
+      // so we can just forward its reply as-is.
+      outputText = text;
+    } else {
+      const gotPdf = !requestedPdf || files.some((file) => file.endsWith('.pdf'));
+      const gotCsv = !requestedCsv || files.some((file) => file.endsWith('.csv'));
+      const gotGraph = !requestedGraph || images.length > 0;
+
+      outputText = gotPdf && gotCsv && gotGraph
+        ? 'Your selected deliverables are ready.'
+        : `I could not complete the selected deliverables. ${errors.join(' ') || 'A required tool did not finish.'}`;
+    }
