@@ -51,248 +51,89 @@ export const generateGraph = tool({
     const values = points.map(p => p.value).join(', ');
 
     const pythonCode = `
-
 import matplotlib
 matplotlib.use("Agg")
-
 import matplotlib.pyplot as plt
-import numpy as np
-from matplotlib.ticker import FuncFormatter
 
 labels = [${labels}]
 values = [${values}]
 chart_type = "${type}"
 title = ${JSON.stringify(title)}
 
+ACCENT = "#2563EB"
+GRID_COLOR = "#E5E7EB"
 
+# matplotlib's defaults look dated - a few tweaks go a long way.
 plt.rcParams.update({
-    "font.family": "DejaVu Sans",
     "font.size": 10,
-    "axes.titlesize": 17,
+    "axes.titlesize": 16,
     "axes.titleweight": "bold",
-    "axes.labelsize": 10,
-    "axes.edgecolor": "#D1D5DB",
-    "axes.linewidth": 0.8,
-    "xtick.color": "#6B7280",
-    "ytick.color": "#6B7280",
-    "text.color": "#111827",
-    "figure.facecolor": "#FFFFFF",
-    "axes.facecolor": "#FFFFFF",
-    "savefig.facecolor": "#FFFFFF",
+    "axes.edgecolor": GRID_COLOR,
+    "figure.facecolor": "white",
+    "axes.facecolor": "white",
 })
 
-# Convert values safely
-values = np.asarray(values, dtype=float)
+fig, ax = plt.subplots(figsize=(7, 4.5))
 
 
-
-if chart_type == "bar":
-    width = max(7, min(12, len(labels) * 0.85))
-    height = 5.2
-else:
-    width = max(7, min(12, len(labels) * 0.75))
-    height = 5.2
-
-fig, ax = plt.subplots(figsize=(width, height))
-
-
-
-def format_value(value):
-    value = float(value)
-
-    if abs(value) >= 1_000_000_000:
-        return f"{value / 1_000_000_000:.1f}B"
-    elif abs(value) >= 1_000_000:
-        return f"{value / 1_000_000:.1f}M"
-    elif abs(value) >= 1_000:
-        return f"{value / 1_000:.1f}K"
-    elif value == int(value):
-        return f"{int(value)}"
-    else:
-        return f"{value:.2f}".rstrip("0").rstrip(".")
-
-
-def clean_spines():
+def hide_borders():
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["left"].set_visible(False)
-    ax.spines["bottom"].set_color("#E5E7EB")
-
-    ax.tick_params(
-        axis="both",
-        which="both",
-        length=0,
-        pad=7
-    )
-
-
+    ax.tick_params(length=0)
 
 
 if chart_type == "bar":
+    # sort so the biggest bar ends up on top - easier to scan
+    pairs = sorted(zip(labels, values), key=lambda pair: pair[1])
+    sorted_labels = [pair[0] for pair in pairs]
+    sorted_values = [pair[1] for pair in pairs]
 
-    # Sort bars from smallest → largest
-    order = np.argsort(values)
-    sorted_labels = np.asarray(labels)[order]
-    sorted_values = values[order]
-
-    # Horizontal bars are much easier to read for categories
-    y = np.arange(len(sorted_labels))
-
-    bars = ax.barh(
-        y,
-        sorted_values,
-        height=0.62,
-        color="#2563EB",
-        alpha=0.92,
-        edgecolor="none"
-    )
-
+    y = range(len(sorted_labels))
+    bars = ax.barh(y, sorted_values, color=ACCENT, height=0.6)
     ax.set_yticks(y)
     ax.set_yticklabels(sorted_labels)
-
-    # Subtle horizontal grid
-    ax.xaxis.grid(
-        True,
-        color="#E5E7EB",
-        linewidth=0.8,
-        alpha=0.8
-    )
-    ax.yaxis.grid(False)
+    ax.xaxis.grid(True, color=GRID_COLOR)
     ax.set_axisbelow(True)
-
-    # Add values to the end of bars
-    max_value = max(abs(sorted_values)) if len(sorted_values) else 1
-    offset = max_value * 0.015
 
     for bar, value in zip(bars, sorted_values):
         ax.text(
-            value + offset,
+            bar.get_width(),
             bar.get_y() + bar.get_height() / 2,
-            format_value(value),
+            f" {value:g}",
             va="center",
-            ha="left",
-            fontsize=9.5,
-            fontweight="600",
-            color="#374151"
+            fontsize=9,
         )
-
-    # Extra room for value labels
-    ax.set_xlim(
-        left=min(0, sorted_values.min() * 1.05),
-        right=sorted_values.max() * 1.15
-    )
-
-    clean_spines()
-
 
 else:
-
-    x = np.arange(len(labels))
-
-    # Main line
-    ax.plot(
-        x,
-        values,
-        linewidth=2.8,
-        color="#2563EB",
-        marker="o",
-        markersize=6,
-        markerfacecolor="#FFFFFF",
-        markeredgecolor="#2563EB",
-        markeredgewidth=2,
-        solid_capstyle="round",
-        zorder=3
-    )
-
-    # Subtle area beneath the line
-    ax.fill_between(
-        x,
-        values,
-        0,
-        alpha=0.07,
-        color="#2563EB",
-        zorder=1
-    )
-
+    x = range(len(labels))
+    ax.plot(x, values, color=ACCENT, marker="o", linewidth=2.5)
+    ax.fill_between(x, values, min(values), color=ACCENT, alpha=0.08)
     ax.set_xticks(x)
-    ax.set_xticklabels(labels)
-
-    # Horizontal grid only
-    ax.yaxis.grid(
-        True,
-        color="#E5E7EB",
-        linewidth=0.8,
-        alpha=0.8
-    )
-    ax.xaxis.grid(False)
+    ax.yaxis.grid(True, color=GRID_COLOR)
     ax.set_axisbelow(True)
 
-    # Highlight the latest/highest point
-    if len(values) > 0:
-        max_idx = np.argmax(values)
+    if any(len(str(label)) > 8 for label in labels):
+        ax.set_xticklabels(labels, rotation=30, ha="right")
+    else:
+        ax.set_xticklabels(labels)
 
-        ax.scatter(
-            x[max_idx],
-            values[max_idx],
-            s=65,
-            color="#2563EB",
-            edgecolor="#FFFFFF",
-            linewidth=2,
-            zorder=4
-        )
-
+    # label the most recent point so the current value is obvious
+    if values:
         ax.annotate(
-            format_value(values[max_idx]),
-            xy=(x[max_idx], values[max_idx]),
-            xytext=(0, 12),
+            f"{values[-1]:g}",
+            (len(values) - 1, values[-1]),
+            xytext=(6, 0),
             textcoords="offset points",
-            ha="center",
-            fontsize=9.5,
-            fontweight="600",
-            color="#374151"
+            va="center",
+            fontsize=9,
+            fontweight="bold",
         )
 
-    clean_spines()
-
-
-
-ax.set_title(
-    title,
-    loc="left",
-    pad=18,
-    color="#111827"
-)
-
-# Remove unnecessary axis labels
-ax.set_xlabel("")
-ax.set_ylabel("")
-
-# Rotate long x-axis labels when necessary
-if chart_type != "bar":
-    if any(len(str(label)) > 10 for label in labels):
-        plt.setp(
-            ax.get_xticklabels(),
-            rotation=35,
-            ha="right"
-        )
-
-#
-
-fig.subplots_adjust(
-    left=0.08,
-    right=0.96,
-    top=0.86,
-    bottom=0.14
-)
-
-plt.savefig(
-    "graph.png",
-    dpi=180,
-    bbox_inches="tight",
-    pad_inches=0.25
-)
-
-plt.close(fig)
+hide_borders()
+ax.set_title(title, loc="left", pad=14)
+plt.tight_layout()
+plt.savefig("graph.png", dpi=160)
 `;
 
     try {

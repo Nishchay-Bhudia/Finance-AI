@@ -86,10 +86,12 @@ Rules:
 
     // Our local Ollama model doesn't actually honor toolChoice: 'required'
     // (this provider just ignores it), and it's small enough that it
-    // sometimes replies in plain text instead of calling a tool, or gets a
-    // field name wrong. If that happens for a deliverable request, tell it
-    // exactly what went wrong and give it another attempt.
-    const MAX_ATTEMPTS = 3;
+    // sometimes replies with nothing at all instead of calling a tool, or
+    // gets a field name wrong. If that happens for a deliverable request,
+    // tell it exactly what went wrong and give it another attempt. 3 wasn't
+    // always enough - a "reply with nothing" miss can happen two attempts
+    // in a row, so give it more room before giving up.
+    const MAX_ATTEMPTS = 5;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const result = streamText({
         model,
