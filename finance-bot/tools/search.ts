@@ -33,14 +33,21 @@ export async function searchFinanceData(query: string) {
 
   const data = await res.json() as { results?: { title: string; url: string; content: unknown }[] };
 
+  // Valyu doesn't always send content as a string. A single price often
+  // comes back as a plain number, and a price history comes back as an
+  // array of objects (one per day/week). Plain String(...) turns that
+  // array into "[object Object],[object Object],..." and throws away all
+  // the real data - so only strings get passed through as-is, everything
+  // else gets JSON.stringify'd so the actual numbers survive.
+  const contentToText = (content: unknown) =>
+    typeof content === 'string' ? content : JSON.stringify(content);
+
   // Keep only what matters, and cap each result's content so the whole
-  // payload stays small. Valyu doesn't always send content as a string -
-  // a result that's just a single price sometimes comes back as a plain
-  // number, so convert to string before trying to slice it.
+  // payload stays small.
   const results = (data.results ?? []).map((result) => ({
     title: result.title,
     url: result.url,
-    content: String(result.content).slice(0, 1000),
+    content: contentToText(result.content).slice(0, 1000),
   }));
 
   return { results };
