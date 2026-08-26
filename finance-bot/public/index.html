@@ -577,8 +577,16 @@
     let chatId = Date.now().toString();
     deliverableInputs.forEach(input => { input.checked = false; });
 
+    // Keeps chatId and localStorage in sync in one place, so a page
+    // refresh can look up "what was I last looking at" instead of always
+    // starting a fresh conversation.
+    function setChatId(id) {
+      chatId = id;
+      localStorage.setItem('chatId', id);
+    }
+
     newChatButton.addEventListener('click', () => {
-      chatId = Date.now().toString();
+      setChatId(Date.now().toString());
       log.innerHTML = '';
       log.appendChild(emptyState);
       input.value = '';
@@ -709,7 +717,7 @@
         await fetch('/chats/' + id, { method: 'DELETE' });
 
         if (id === chatId) {
-          chatId = Date.now().toString();
+          setChatId(Date.now().toString());
           log.innerHTML = '';
           log.appendChild(emptyState);
         }
@@ -722,15 +730,19 @@
     }
 
     async function openChat(id) {
-      chatId = id;
+      setChatId(id);
       const res = await fetch('/chats/' + id);
       const messages = await res.json();
 
       log.innerHTML = '';
-      messages.forEach(msg => {
-        if (msg.role === 'user') addUserMessage(msg.content);
-        else addAssistantMessage(msg.content, [], false, []);
-      });
+      if (messages.length === 0) {
+        log.appendChild(emptyState);
+      } else {
+        messages.forEach(msg => {
+          if (msg.role === 'user') addUserMessage(msg.content);
+          else addAssistantMessage(msg.content, [], false, []);
+        });
+      }
 
       loadChatList();
     }
@@ -852,6 +864,12 @@
         // response headers (see server.ts), so by the time fetch() resolves
         // here, it's already on disk - safe to refresh the sidebar now
         // instead of waiting for the whole model response to finish.
+        //
+        // setChatId (not a raw assignment) matters here even though chatId
+        // isn't changing - it's what makes localStorage aware of a chat
+        // that started from the page's default id rather than "New chat"
+        // or openChat, so a later refresh can still find it.
+        setChatId(chatId);
         loadChatList();
 
         const reader = res.body.getReader();
@@ -911,7 +929,23 @@
       chip.addEventListener('click', () => send(chip.dataset.q));
     });
 
-    loadChatList();
+    // Whatever chat was open when the page last closed or refreshed - if
+    // it actually has messages saved, reopen it. Otherwise just show the
+    // sidebar with nothing selected, same as a first-ever visit.
+    async function restoreLastChat() {
+      const savedId = localStorage.getItem('chatId');
+      if (savedId) {
+        const res = await fetch('/chats/' + savedId);
+        const messages = await res.json();
+        if (messages.length > 0) {
+          await openChat(savedId);
+          return;
+        }
+      }
+      loadChatList();
+    }
+
+    restoreLastChat();
   </script>
 
 </body>
