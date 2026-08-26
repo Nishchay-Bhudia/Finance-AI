@@ -60,18 +60,21 @@ values = [${values}]
 chart_type = "${type}"
 title = ${JSON.stringify(title)}
 
-ACCENT = "#2563EB"
+BLUE = "#2563EB"
+GREEN = "#16A34A"
+RED = "#DC2626"
 GRID_COLOR = "#E5E7EB"
+TEXT_COLOR = "#111827"
 
 # matplotlib's defaults look dated - a few tweaks go a long way.
 plt.rcParams.update({
     "font.size": 10,
-    "axes.titlesize": 16,
-    "axes.titleweight": "bold",
+    "text.color": TEXT_COLOR,
     "axes.edgecolor": GRID_COLOR,
     "figure.facecolor": "white",
     "axes.facecolor": "white",
 })
+
 
 def hide_borders():
     ax.spines["top"].set_visible(False)
@@ -90,10 +93,10 @@ if chart_type == "bar":
     # would stretch to fill the whole thing. Scale height with the bar
     # count instead, so a single bar gets a short figure.
     height = max(1.8, min(4.5, len(sorted_labels) * 0.8 + 1))
-    fig, ax = plt.subplots(figsize=(7, height))
+    fig, ax = plt.subplots(figsize=(7.5, height))
 
     y = range(len(sorted_labels))
-    bars = ax.barh(y, sorted_values, color=ACCENT, height=0.6)
+    bars = ax.barh(y, sorted_values, color=BLUE, height=0.6, zorder=3)
     ax.set_yticks(y)
     ax.set_yticklabels(sorted_labels)
     ax.xaxis.grid(True, color=GRID_COLOR)
@@ -105,40 +108,73 @@ if chart_type == "bar":
             bar.get_y() + bar.get_height() / 2,
             f" {value:g}",
             va="center",
-            fontsize=9,
+            fontsize=9.5,
+            fontweight="bold",
         )
 
+    hide_borders()
+    ax.set_title(title, loc="left", pad=16, fontsize=16, fontweight="bold")
+    plt.tight_layout()
+
 else:
-    fig, ax = plt.subplots(figsize=(7, 4.5))
+    fig, ax = plt.subplots(figsize=(7.5, 4.6))
+
+    # Color the whole chart like a real stock app: green if it ended up
+    # higher than it started, red if it ended up lower.
+    change = values[-1] - values[0]
+    percent_change = (change / values[0] * 100) if values[0] else 0
+    trend_color = GREEN if change >= 0 else RED
 
     x = range(len(labels))
-    ax.plot(x, values, color=ACCENT, marker="o", linewidth=2.5)
-    ax.fill_between(x, values, min(values), color=ACCENT, alpha=0.08)
-    ax.set_xticks(x)
-    ax.yaxis.grid(True, color=GRID_COLOR)
-    ax.set_axisbelow(True)
+    ax.plot(x, values, color=trend_color, linewidth=2.6, zorder=3)
+    ax.fill_between(x, values, min(values), color=trend_color, alpha=0.08, zorder=1)
 
+    # Markers only at the start and end - a dot on every point gets
+    # noisy once there are more than a handful of points.
+    ax.scatter(
+        [0, len(values) - 1],
+        [values[0], values[-1]],
+        color=trend_color,
+        s=45,
+        zorder=4,
+        edgecolor="white",
+        linewidth=1.5,
+    )
+    ax.annotate(
+        f"{values[-1]:g}",
+        (len(values) - 1, values[-1]),
+        xytext=(8, 0),
+        textcoords="offset points",
+        va="center",
+        fontsize=10,
+        fontweight="bold",
+        color=trend_color,
+    )
+
+    ax.set_xticks(x)
     if any(len(str(label)) > 8 for label in labels):
         ax.set_xticklabels(labels, rotation=30, ha="right")
     else:
         ax.set_xticklabels(labels)
 
-    # label the most recent point so the current value is obvious
-    if values:
-        ax.annotate(
-            f"{values[-1]:g}",
-            (len(values) - 1, values[-1]),
-            xytext=(6, 0),
-            textcoords="offset points",
-            va="center",
-            fontsize=9,
-            fontweight="bold",
-        )
+    ax.yaxis.grid(True, color=GRID_COLOR)
+    ax.set_axisbelow(True)
+    hide_borders()
 
-hide_borders()
-ax.set_title(title, loc="left", pad=14)
-plt.tight_layout()
-plt.savefig("graph.png", dpi=160)
+    # Leave room above the axes for a two-line title: the chart title
+    # itself, plus a colored subtitle showing the actual change.
+    fig.subplots_adjust(top=0.78, bottom=0.2)
+    fig.text(0.06, 0.93, title, fontsize=16, fontweight="bold")
+    fig.text(
+        0.06,
+        0.86,
+        f"{change:+.2f} ({percent_change:+.1f}%)",
+        fontsize=11,
+        fontweight="bold",
+        color=trend_color,
+    )
+
+plt.savefig("graph.png", dpi=170)
 `;
 
     try {
