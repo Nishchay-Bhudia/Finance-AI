@@ -238,9 +238,6 @@ Rules:
       }
     }
 
-    messages.push({ role: 'assistant', content: text });
-    saveConversation(chatId, conversation);
-
     let outputText: string;
     if (!requestedOutput) {
       // The system prompt already tells the model to stay markdown-free,
@@ -255,6 +252,14 @@ Rules:
         ? 'Your selected deliverables are ready.'
         : `I could not complete the selected deliverables. ${errors.join(' ') || 'A required tool did not finish.'}`;
     }
+
+    // Save outputText, not the raw text - for a deliverable request, text
+    // is whatever the model wrote on its last retry attempt, which can be
+    // it echoing the correction prompt back instead of complying. outputText
+    // is the same clean message the user actually saw, so that's what a
+    // reopened chat should show too.
+    messages.push({ role: 'assistant', content: outputText });
+    saveConversation(chatId, conversation);
 
     send('done', { text: outputText, files, images, usedSearch: true });
   } catch (error) {
