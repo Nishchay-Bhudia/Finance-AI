@@ -31,15 +31,16 @@ export async function searchFinanceData(query: string) {
     return { error: `Valyu request failed: ${res.status}` };
   }
 
-  const data = await res.json() as { results?: { title: string; url: string; content: string }[] };
+  const data = await res.json() as { results?: { title: string; url: string; content: unknown }[] };
 
- 
   // Keep only what matters, and cap each result's content so the whole
-  // payload stays small.
+  // payload stays small. Valyu doesn't always send content as a string -
+  // a result that's just a single price sometimes comes back as a plain
+  // number, so convert to string before trying to slice it.
   const results = (data.results ?? []).map((result) => ({
     title: result.title,
     url: result.url,
-    content: result.content.slice(0, 1000),
+    content: String(result.content).slice(0, 1000),
   }));
 
   return { results };
