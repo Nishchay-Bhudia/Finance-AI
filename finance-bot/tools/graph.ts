@@ -11,10 +11,10 @@ export function resetLatestGraph() {
   latestGraphFilename = undefined;
 }
 
-// Spins up a throwaway Daytona sandbox, runs some Python in it, and downloads
+//Spins up a throwaway Daytona sandbox, runs some Python in it, and downloads
 // one file it produced. This is the reusable bit — the sandbox itself doesn't
 // know or care that it's making a chart. Copy this into other projects
-// whenever you need to run generated code somewhere isolated and pull a
+//        whenever you need to run generated code somewhere isolated and pull a
 // result file back out.
 async function runPythonAndDownloadFile(code: string, resultFilename: string) {
   const daytona = new Daytona();

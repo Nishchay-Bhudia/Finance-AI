@@ -15,10 +15,10 @@ export async function searchFinanceData(query: string) {
 
   const res = await fetch('https://api.valyu.network/v1/deepsearch', {
     method: 'POST',
-    signal: AbortSignal.timeout(30000),
+    signal: AbortSignal.timeout(60000),
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': process.env.VALYU_API_KEY!,
+      'x-api-key': process.env.VALYU_API_KEY!, // ! is like saying trust me to ts this is legit
     },
     body: JSON.stringify({
       query: searchQuery,
@@ -33,9 +33,7 @@ export async function searchFinanceData(query: string) {
 
   const data = await res.json() as { results?: { title: string; url: string; content: string }[] };
 
-  // We're running a small local model with a limited context window. Valyu's
-  // raw results include the full scraped page text per result, which is way
-  // more than the model needs (or can even fit) to pull out a few figures.
+ 
   // Keep only what matters, and cap each result's content so the whole
   // payload stays small.
   const results = (data.results ?? []).map((result) => ({
