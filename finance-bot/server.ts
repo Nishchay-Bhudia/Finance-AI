@@ -3,7 +3,7 @@ import 'dotenv/config';
 import express from 'express';
 import type { Request, Response } from 'express';
 import { streamText, stepCountIs } from 'ai';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { model } from './lib/ai.js';
 import { searchFinanceData } from './tools/search.js';
 import { exportPdf } from './tools/exportPdf.js';
@@ -16,7 +16,9 @@ app.use(express.static('public'));
 app.use('/outputs', express.static('outputs'));
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
-type Conversation = { filename: string; messages: ChatMessage[] };
+// title is only set once the user renames a chat - until then the sidebar
+// just shows a preview of the first message instead.
+type Conversation = { filename: string; title?: string; messages: ChatMessage[] };
 
 const CHATS_DIR = './outputs';
 
@@ -35,7 +37,7 @@ function loadConversations() {
 
     try {
       const saved = JSON.parse(readFileSync(`${CHATS_DIR}/${file}`, 'utf8'));
-      conversations.set(saved.chatId, { filename: file, messages: saved.messages });
+      conversations.set(saved.chatId, { filename: file, title: saved.title, messages: saved.messages });
     } catch {
       // Not one of our chat files, or corrupted - skip it rather than
       // crash the whole server on startup.
@@ -50,7 +52,7 @@ loadConversations();
 function saveConversation(chatId: string, conversation: Conversation) {
   if (!existsSync(CHATS_DIR)) mkdirSync(CHATS_DIR);
   const filepath = `${CHATS_DIR}/${conversation.filename}`;
-  writeFileSync(filepath, JSON.stringify({ chatId, messages: conversation.messages }, null, 2));
+  writeFileSync(filepath, JSON.stringify({ chatId, title: conversation.title, messages: conversation.messages }, null, 2));
 }
 
 // When the model calls a tool with the wrong field names, the AI SDK wraps
@@ -65,7 +67,7 @@ function describeInvalidToolCall(call: any): string {
 app.get('/chats', (_req: Request, res: Response) => {
   const chats = [...conversations.entries()].map(([chatId, conversation]) => ({
     chatId,
-    preview: conversation.messages[0]?.content.slice(0, 60) ?? 'New chat',
+    preview: conversation.title ?? conversation.messages[0]?.content.slice(0, 60) ?? 'New chat',
   }));
   res.json(chats);
 });
@@ -73,6 +75,39 @@ app.get('/chats', (_req: Request, res: Response) => {
 app.get('/chats/:chatId', (req: Request, res: Response) => {
   const conversation = conversations.get(String(req.params.chatId));
   res.json(conversation?.messages ?? []);
+});
+
+app.patch('/chats/:chatId', (req: Request, res: Response) => {
+  const chatId = String(req.params.chatId);
+  const conversation = conversations.get(chatId);
+  if (!conversation) {
+    res.status(404).json({ error: 'No chat with that id.' });
+    return;
+  }
+
+  const title = String(req.body.title ?? '').trim().slice(0, 60);
+  if (!title) {
+    res.status(400).json({ error: 'Title cannot be empty.' });
+    return;
+  }
+
+  conversation.title = title;
+  saveConversation(chatId, conversation);
+  res.json({ chatId, title });
+});
+
+app.delete('/chats/:chatId', (req: Request, res: Response) => {
+  const chatId = String(req.params.chatId);
+  const conversation = conversations.get(chatId);
+  if (!conversation) {
+    res.status(404).json({ error: 'No chat with that id.' });
+    return;
+  }
+
+  const filepath = `${CHATS_DIR}/${conversation.filename}`;
+  if (existsSync(filepath)) unlinkSync(filepath);
+  conversations.delete(chatId);
+  res.json({ deleted: true });
 });
 
 app.post('/chat', async (req: Request, res: Response) => {
