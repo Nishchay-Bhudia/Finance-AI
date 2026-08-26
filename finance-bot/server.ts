@@ -57,7 +57,7 @@ Rules:
 3. The selected deliverables are: ${deliverables.join(', ') || 'none'}.
 4. Search results are already available, but call searchFinance again when more information is needed.
 5. Complete every selected deliverable before replying. Use only real data from searchFinance.
-6. For a selected graph, call generateGraph with a valid bar or line type and real numeric points. If graph is the only selection, create only the graph.
+6. For a selected graph, call generateGraph with a valid bar or line type and real numeric points. Prefer several points over one - if the search results include a price history, plot multiple dates instead of just the latest price. If graph is the only selection, create only the graph.
 7. If graph is selected with PDF, call generateGraph first, wait for its result, then call exportPdf with its returned imageFilename so the graph is embedded.
 8. If graph is selected with CSV, include the graph data and returned PNG filename in exportCsv.
 9. For a selected PDF, include a complete detailed report with all requested figures and news.
