@@ -28,8 +28,64 @@
 
   body {
     display: flex;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+  }
+
+  .sidebar-header {
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-header h1 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+
+  .sidebar-header .sub {
+    font-size: 11px;
+    color: var(--muted);
+    display: block;
+  }
+
+  .new-chat-btn {
+    margin: 12px 12px 4px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .new-chat-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .main-panel {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
     flex-direction: column;
     align-items: center;
+    overflow: hidden;
   }
 
   header {
@@ -353,70 +409,78 @@
   main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
   .chat-list {
-    width: 100%;
-    max-width: 760px;
-    padding: 10px 20px 0;
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 12px 12px;
     display: flex;
-    gap: 8px;
-    overflow-x: auto;
+    flex-direction: column;
+    gap: 3px;
   }
 
   .chat-item {
-    font-family: var(--mono);
-    font-size: 11.5px;
-    padding: 6px 10px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 12.5px;
+    padding: 8px 10px;
+    border-radius: 7px;
+    color: var(--text);
     cursor: pointer;
     white-space: nowrap;
-    background: var(--surface);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .chat-item:hover { border-color: var(--accent); color: var(--accent); }
-  .chat-item.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .chat-item:hover { background: var(--border); }
+  .chat-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 </style>
 </head>
 <body>
 
-  <header>
-    <div class="header-inner">
+  <aside class="sidebar">
+    <div class="sidebar-header">
       <div class="mark">V</div>
-      <h1>Finance Assistant</h1>
-      <span class="sub">powered by Valyu</span>
-      <button type="button" id="new-chat">New chat</button>
-      <div class="status-pill"><span class="status-dot"></span>ready</div>
-    </div>
-  </header>
-
-  <div class="chat-list" id="chat-list"></div>
-
-  <main id="log">
-    <div class="empty-state" id="empty-state">
-      <div class="mark-lg">V</div>
-      <p><strong>Ask about a stock, company, or market.</strong></p>
-      <p>Every figure is grounded in a live search — nothing is estimated.</p>
-      <div class="examples">
-        <div class="example-chip" data-q="What is Apple's current stock price?">What is Apple's current stock price?</div>
-        <div class="example-chip" data-q="Compare Tesla and Ford's latest earnings">Compare Tesla and Ford's latest earnings</div>
-        <div class="example-chip" data-q="Export Nvidia's recent stock data as a CSV">Export Nvidia's recent stock data as a CSV</div>
+      <div>
+        <h1>Finance Assistant</h1>
+        <span class="sub">powered by Valyu</span>
       </div>
     </div>
-  </main>
+    <button type="button" id="new-chat" class="new-chat-btn">+ New chat</button>
+    <div class="chat-list" id="chat-list"></div>
+  </aside>
 
-  <footer>
-    <div class="deliverables" aria-label="Deliverables">
-      <span>Deliverables</span>
-      <label><input type="checkbox" value="pdf" autocomplete="off"> PDF</label>
-      <label><input type="checkbox" value="csv" autocomplete="off"> CSV</label>
-      <label><input type="checkbox" value="graph" autocomplete="off"> Graph</label>
-    </div>
-    <form id="chat-form">
-      <input id="input" type="text" placeholder="Ask about a stock, market, or company…" autocomplete="off">
-      <button type="submit" id="send-btn">Send</button>
-    </form>
-    <div class="disclaimer">Data sourced live via Valyu. Not financial advice.</div>
-  </footer>
+  <div class="main-panel">
+    <header>
+      <div class="header-inner">
+        <div class="status-pill"><span class="status-dot"></span>ready</div>
+      </div>
+    </header>
+
+    <main id="log">
+      <div class="empty-state" id="empty-state">
+        <div class="mark-lg">V</div>
+        <p><strong>Ask about a stock, company, or market.</strong></p>
+        <p>Every figure is grounded in a live search — nothing is estimated.</p>
+        <div class="examples">
+          <div class="example-chip" data-q="What is Apple's current stock price?">What is Apple's current stock price?</div>
+          <div class="example-chip" data-q="Compare Tesla and Ford's latest earnings">Compare Tesla and Ford's latest earnings</div>
+          <div class="example-chip" data-q="Export Nvidia's recent stock data as a CSV">Export Nvidia's recent stock data as a CSV</div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="deliverables" aria-label="Deliverables">
+        <span>Deliverables</span>
+        <label><input type="checkbox" value="pdf" autocomplete="off"> PDF</label>
+        <label><input type="checkbox" value="csv" autocomplete="off"> CSV</label>
+        <label><input type="checkbox" value="graph" autocomplete="off"> Graph</label>
+      </div>
+      <form id="chat-form">
+        <input id="input" type="text" placeholder="Ask about a stock, market, or company…" autocomplete="off">
+        <button type="submit" id="send-btn">Send</button>
+      </form>
+      <div class="disclaimer">Data sourced live via Valyu. Not financial advice.</div>
+    </footer>
+  </div>
 
   <script>
     const log = document.getElementById('log');
