@@ -33,7 +33,7 @@ async function runPythonAndDownloadFile(code: string, resultFilename: string) {
 
 export const generateGraph = tool({
   description:
-    'Generate a graph image from structured data. Call this only after searchFinance returns real numeric figures. Always provide a chart type and at least one point with a label and number. Do not call this with empty points or invented values.',
+    'Generate a graph image from structured data. Call this only after searchFinance returns real numeric figures. Always provide a chart type and at least one point with a label and number. Do not call this with empty points or invented values. A single point makes a boring, near-useless graph - if the search results include a price history (a list of dates/prices, not just the latest price), pass several of those points instead of just one.',
   inputSchema: z.object({
     title: z.string().describe('Chart title , make it relevant to the figures of the chart'),
     type: z.enum(['bar', 'line']).describe('The field must be named "type" (not "chartType"). Use bar for comparing figures and line for figures over time'),
@@ -73,9 +73,6 @@ plt.rcParams.update({
     "axes.facecolor": "white",
 })
 
-fig, ax = plt.subplots(figsize=(7, 4.5))
-
-
 def hide_borders():
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
@@ -88,6 +85,12 @@ if chart_type == "bar":
     pairs = sorted(zip(labels, values), key=lambda pair: pair[1])
     sorted_labels = [pair[0] for pair in pairs]
     sorted_values = [pair[1] for pair in pairs]
+
+    # A fixed figure height makes very few bars look absurd - one bar
+    # would stretch to fill the whole thing. Scale height with the bar
+    # count instead, so a single bar gets a short figure.
+    height = max(1.8, min(4.5, len(sorted_labels) * 0.8 + 1))
+    fig, ax = plt.subplots(figsize=(7, height))
 
     y = range(len(sorted_labels))
     bars = ax.barh(y, sorted_values, color=ACCENT, height=0.6)
@@ -106,6 +109,8 @@ if chart_type == "bar":
         )
 
 else:
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+
     x = range(len(labels))
     ax.plot(x, values, color=ACCENT, marker="o", linewidth=2.5)
     ax.fill_between(x, values, min(values), color=ACCENT, alpha=0.08)
