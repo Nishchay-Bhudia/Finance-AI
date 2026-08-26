@@ -3,6 +3,7 @@ import 'dotenv/config';
 import express from 'express';
 import type { Request, Response } from 'express';
 import { streamText, stepCountIs } from 'ai';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { model } from './lib/ai.js';
 import { searchFinanceData } from './tools/search.js';
 import { exportPdf } from './tools/exportPdf.js';
@@ -15,11 +16,42 @@ app.use(express.static('public'));
 app.use('/outputs', express.static('outputs'));
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
+type Conversation = { filename: string; messages: ChatMessage[] };
 
-// One message array per chatId, instead of a single shared one. This lives
+const CHATS_DIR = './outputs';
+
+// One conversation per chatId, instead of a single shared one. This lives
 // outside the route handler so it survives across requests - if it were
 // declared inside app.post, it would reset on every single message.
-const conversations = new Map<string, ChatMessage[]>();
+const conversations = new Map<string, Conversation>();
+
+// Read back any chats saved from a previous run, so restarting the server
+// doesn't lose them. Runs once, when this file first loads.
+function loadConversations() {
+  if (!existsSync(CHATS_DIR)) return;
+
+  for (const file of readdirSync(CHATS_DIR)) {
+    if (!file.endsWith('.json')) continue;
+
+    try {
+      const saved = JSON.parse(readFileSync(`${CHATS_DIR}/${file}`, 'utf8'));
+      conversations.set(saved.chatId, { filename: file, messages: saved.messages });
+    } catch {
+      // Not one of our chat files, or corrupted - skip it rather than
+      // crash the whole server on startup.
+    }
+  }
+}
+
+loadConversations();
+
+// Writes a conversation's full message list to its file. Called after every
+// message, not just at the end, so a crash mid-conversation doesn't lose it.
+function saveConversation(chatId: string, conversation: Conversation) {
+  if (!existsSync(CHATS_DIR)) mkdirSync(CHATS_DIR);
+  const filepath = `${CHATS_DIR}/${conversation.filename}`;
+  writeFileSync(filepath, JSON.stringify({ chatId, messages: conversation.messages }, null, 2));
+}
 
 // When the model calls a tool with the wrong field names, the AI SDK wraps
 // the real reason (a Zod validation error) a few layers deep inside the
@@ -30,6 +62,19 @@ function describeInvalidToolCall(call: any): string {
   return `Your call to ${call.toolName} was invalid: ${schemaError ?? 'bad input'}. Fix it and call the tool again with the correct field names.`;
 }
 
+app.get('/chats', (_req: Request, res: Response) => {
+  const chats = [...conversations.entries()].map(([chatId, conversation]) => ({
+    chatId,
+    preview: conversation.messages[0]?.content.slice(0, 60) ?? 'New chat',
+  }));
+  res.json(chats);
+});
+
+app.get('/chats/:chatId', (req: Request, res: Response) => {
+  const conversation = conversations.get(String(req.params.chatId));
+  res.json(conversation?.messages ?? []);
+});
+
 app.post('/chat', async (req: Request, res: Response) => {
   const { message, chatId } = req.body;
   const deliverables: string[] = Array.isArray(req.body.deliverables) ? req.body.deliverables : [];
@@ -39,13 +84,19 @@ app.post('/chat', async (req: Request, res: Response) => {
   const requestedGraph = deliverables.includes('graph');
   const requestedOutput = requestedPdf || requestedCsv || requestedGraph;
 
-  // First message from a new chatId - start it off with an empty history.
+  // First message from a new chatId - name its file after this first
+  // message (same safeName pattern exportPdf/exportCsv use), and start it
+  // off with an empty history.
   if (!conversations.has(chatId)) {
-    conversations.set(chatId, []);
+    const safeName = message.slice(0, 60).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const filename = `${safeName || 'chat'}-${chatId}.json`;
+    conversations.set(chatId, { filename, messages: [] });
   }
-  const messages = conversations.get(chatId)!;
+  const conversation = conversations.get(chatId)!;
+  const messages = conversation.messages;
 
   messages.push({ role: 'user', content: message });
+  saveConversation(chatId, conversation);
   resetLatestGraph();
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -153,6 +204,7 @@ Rules:
     }
 
     messages.push({ role: 'assistant', content: text });
+    saveConversation(chatId, conversation);
 
     let outputText: string;
     if (!requestedOutput) {

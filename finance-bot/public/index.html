@@ -351,6 +351,30 @@
 
   main::-webkit-scrollbar { width: 8px; }
   main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .chat-list {
+    width: 100%;
+    max-width: 760px;
+    padding: 10px 20px 0;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+  }
+
+  .chat-item {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+    background: var(--surface);
+  }
+
+  .chat-item:hover { border-color: var(--accent); color: var(--accent); }
+  .chat-item.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 </style>
 </head>
 <body>
@@ -364,6 +388,8 @@
       <div class="status-pill"><span class="status-dot"></span>ready</div>
     </div>
   </header>
+
+  <div class="chat-list" id="chat-list"></div>
 
   <main id="log">
     <div class="empty-state" id="empty-state">
@@ -401,16 +427,47 @@
     const statusPill = document.querySelector('.status-pill');
     const deliverableInputs = document.querySelectorAll('.deliverables input');
     const newChatButton = document.getElementById('new-chat');
+    const chatList = document.getElementById('chat-list');
     let chatId = Date.now().toString();
     deliverableInputs.forEach(input => { input.checked = false; });
 
     newChatButton.addEventListener('click', () => {
       chatId = Date.now().toString();
       log.innerHTML = '';
+      log.appendChild(emptyState);
       input.value = '';
       deliverableInputs.forEach(input => { input.checked = false; });
       input.focus();
+      loadChatList();
     });
+
+    async function loadChatList() {
+      const res = await fetch('/chats');
+      const chats = await res.json();
+
+      chatList.innerHTML = '';
+      chats.forEach(chat => {
+        const item = document.createElement('div');
+        item.className = 'chat-item' + (chat.chatId === chatId ? ' active' : '');
+        item.textContent = chat.preview;
+        item.addEventListener('click', () => openChat(chat.chatId));
+        chatList.appendChild(item);
+      });
+    }
+
+    async function openChat(id) {
+      chatId = id;
+      const res = await fetch('/chats/' + id);
+      const messages = await res.json();
+
+      log.innerHTML = '';
+      messages.forEach(msg => {
+        if (msg.role === 'user') addUserMessage(msg.content);
+        else addAssistantMessage(msg.content, [], false, []);
+      });
+
+      loadChatList();
+    }
 
     function clearEmptyState() {
       if (emptyState) emptyState.remove();
@@ -568,6 +625,7 @@
         deliverableInputs.forEach(input => { input.checked = false; });
         statusPill.innerHTML = '<span class="status-dot"></span>ready';
         input.focus();
+        loadChatList();
       }
     }
 
@@ -580,6 +638,8 @@
     document.querySelectorAll('.example-chip').forEach(chip => {
       chip.addEventListener('click', () => send(chip.dataset.q));
     });
+
+    loadChatList();
   </script>
 
 </body>
