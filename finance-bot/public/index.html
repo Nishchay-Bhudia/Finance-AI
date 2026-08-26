@@ -3,17 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <title>Finance Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #ffffff;
+    --bg-glow: #f4f7ff;
     --surface: #f7f8f9;
+    --surface-glass: rgba(247, 248, 249, 0.75);
     --border: #e7e9ec;
     --text: #14171a;
     --muted: #6b7280;
     --accent: #2563eb;
+    --accent-hover: #1d4fd1;
     --accent-soft: #eef3ff;
+    --danger: #dc2626;
+    --danger-soft: #fef2f2;
     --mono: ui-monospace, "SF Mono", Menlo, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --spring: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   * { box-sizing: border-box; }
@@ -21,9 +30,10 @@
   html, body {
     height: 100%;
     margin: 0;
-    background: var(--bg);
+    background: radial-gradient(circle at 15% 0%, var(--bg-glow), var(--bg) 55%);
     color: var(--text);
     font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
   }
 
   body {
@@ -33,50 +43,55 @@
   }
 
   .sidebar {
-    width: 260px;
+    width: 268px;
     flex-shrink: 0;
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: var(--surface);
+    background: var(--surface-glass);
+    backdrop-filter: blur(20px) saturate(160%);
     border-right: 1px solid var(--border);
+    box-shadow: 1px 0 0 rgba(255,255,255,0.6) inset;
   }
 
   .sidebar-header {
-    padding: 16px;
+    padding: 18px 16px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     border-bottom: 1px solid var(--border);
   }
 
   .sidebar-header h1 {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 14.5px;
+    font-weight: 700;
     margin: 0;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
   }
 
   .sidebar-header .sub {
     font-size: 11px;
     color: var(--muted);
     display: block;
+    letter-spacing: 0.01em;
   }
 
   .new-chat-btn {
     margin: 12px 12px 4px;
     padding: 9px 12px;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 9px;
     background: white;
     color: var(--text);
     font-size: 13px;
     font-weight: 600;
     text-align: left;
     cursor: pointer;
+    transition: border-color 150ms var(--spring), color 150ms var(--spring), transform 100ms var(--spring), box-shadow 150ms var(--spring);
   }
 
-  .new-chat-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .new-chat-btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 2px 8px rgba(37,99,235,0.12); }
+  .new-chat-btn:active { transform: scale(0.97); }
 
   .main-panel {
     flex: 1;
@@ -209,10 +224,21 @@
   .row {
     display: flex;
     gap: 10px;
+    animation: message-in 320ms var(--spring) both;
   }
 
   .row.user { justify-content: flex-end; }
   .row.assistant { justify-content: flex-start; }
+
+  @keyframes message-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .row { animation: none; }
+    * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
 
   .avatar {
     width: 24px;
@@ -394,8 +420,11 @@
     font-weight: 600;
     font-size: 13px;
     cursor: pointer;
+    transition: background-color 150ms var(--spring), transform 100ms var(--spring);
   }
 
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button:active:not(:disabled) { transform: scale(0.96); }
   button:disabled { opacity: 0.4; cursor: default; }
 
   .disclaimer {
@@ -418,19 +447,72 @@
   }
 
   .chat-item {
-    font-family: var(--sans);
-    font-size: 12.5px;
-    padding: 8px 10px;
-    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 8px;
     color: var(--text);
+    transition: background-color 150ms var(--spring);
+  }
+
+  .chat-item:hover { background: rgba(0,0,0,0.045); }
+  .chat-item.active { background: var(--accent-soft); }
+  .chat-item.active .chat-item-title { color: var(--accent); font-weight: 600; }
+
+  .chat-item-title {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 4px 8px 10px;
+    font-size: 12.5px;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .chat-item:hover { background: var(--border); }
-  .chat-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .chat-item-title-input {
+    flex: 1;
+    min-width: 0;
+    margin: 4px 4px 4px 8px;
+    padding: 4px 6px;
+    font-size: 12.5px;
+    font-family: inherit;
+    color: var(--text);
+    background: white;
+    border: 1px solid var(--accent);
+    border-radius: 5px;
+    outline: none;
+  }
+
+  .chat-item-actions {
+    display: flex;
+    gap: 2px;
+    padding-right: 6px;
+    opacity: 0;
+    transition: opacity 120ms var(--spring);
+  }
+
+  .chat-item:hover .chat-item-actions,
+  .chat-item.confirming .chat-item-actions { opacity: 1; }
+
+  .chat-item-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 5px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background-color 120ms var(--spring), color 120ms var(--spring), transform 100ms var(--spring);
+  }
+
+  .chat-item-icon-btn:hover { background: rgba(0,0,0,0.08); color: var(--text); }
+  .chat-item-icon-btn:active { transform: scale(0.9); }
+  .chat-item-icon-btn.delete:hover { background: var(--danger-soft); color: var(--danger); }
 </style>
 </head>
 <body>
@@ -505,6 +587,11 @@
       loadChatList();
     });
 
+    const RENAME_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>';
+    const DELETE_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>';
+    const CHECK_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+    const CLOSE_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+
     async function loadChatList() {
       const res = await fetch('/chats');
       const chats = await res.json();
@@ -513,10 +600,125 @@
       chats.forEach(chat => {
         const item = document.createElement('div');
         item.className = 'chat-item' + (chat.chatId === chatId ? ' active' : '');
-        item.textContent = chat.preview;
-        item.addEventListener('click', () => openChat(chat.chatId));
+
+        const title = document.createElement('div');
+        title.className = 'chat-item-title';
+        title.textContent = chat.preview;
+        title.addEventListener('click', () => openChat(chat.chatId));
+
+        const renameBtn = document.createElement('button');
+        renameBtn.type = 'button';
+        renameBtn.className = 'chat-item-icon-btn';
+        renameBtn.title = 'Rename';
+        renameBtn.innerHTML = RENAME_ICON;
+        renameBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          startRename(item, title, chat.chatId, chat.preview);
+        });
+
+        const actions = document.createElement('div');
+        actions.className = 'chat-item-actions';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'chat-item-icon-btn delete';
+        deleteBtn.title = 'Delete';
+        deleteBtn.innerHTML = DELETE_ICON;
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          confirmDelete(item, title, actions, chat.chatId);
+        });
+
+        actions.appendChild(renameBtn);
+        actions.appendChild(deleteBtn);
+
+        item.appendChild(title);
+        item.appendChild(actions);
         chatList.appendChild(item);
       });
+    }
+
+    function startRename(item, titleEl, id, currentValue) {
+      const editInput = document.createElement('input');
+      editInput.className = 'chat-item-title-input';
+      editInput.value = currentValue;
+      item.replaceChild(editInput, titleEl);
+      editInput.focus();
+      editInput.select();
+
+      // blur fires when loadChatList() below removes this input from the
+      // DOM too, so without this guard, pressing Escape would still save -
+      // the blur it triggers would run finish(true) right after finish(false).
+      let settled = false;
+
+      const finish = async (save) => {
+        if (settled) return;
+        settled = true;
+
+        if (save) {
+          const newTitle = editInput.value.trim();
+          if (newTitle && newTitle !== currentValue) {
+            await fetch('/chats/' + id, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title: newTitle }),
+            });
+          }
+        }
+        loadChatList();
+      };
+
+      editInput.addEventListener('blur', () => finish(true));
+      editInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); editInput.blur(); }
+        if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+      });
+    }
+
+    // A native confirm() blocks the whole page until it's dismissed - it
+    // also looks jarring next to a styled sidebar. This does the same job
+    // (deleting is genuinely irreversible, so it still deserves a real
+    // confirmation step) as an inline swap within the chat item instead.
+    function confirmDelete(item, titleEl, actions, id) {
+      const label = document.createElement('div');
+      label.className = 'chat-item-title';
+      label.style.color = 'var(--danger)';
+      label.textContent = 'Delete this chat?';
+
+      item.replaceChild(label, titleEl);
+      item.classList.add('confirming');
+      actions.innerHTML = '';
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.type = 'button';
+      cancelBtn.className = 'chat-item-icon-btn';
+      cancelBtn.title = 'Cancel';
+      cancelBtn.innerHTML = CLOSE_ICON;
+      cancelBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        loadChatList();
+      });
+
+      const confirmBtn = document.createElement('button');
+      confirmBtn.type = 'button';
+      confirmBtn.className = 'chat-item-icon-btn delete';
+      confirmBtn.title = 'Confirm delete';
+      confirmBtn.innerHTML = CHECK_ICON;
+      confirmBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await fetch('/chats/' + id, { method: 'DELETE' });
+
+        if (id === chatId) {
+          chatId = Date.now().toString();
+          log.innerHTML = '';
+          log.appendChild(emptyState);
+        }
+
+        loadChatList();
+      });
+
+      actions.appendChild(cancelBtn);
+      actions.appendChild(confirmBtn);
     }
 
     async function openChat(id) {
@@ -645,6 +847,12 @@
         });
         removeSearchingIndicator();
         if (!res.ok || !res.body) throw new Error('The server did not return a response.');
+
+        // The server saves the user's message to disk before it even sends
+        // response headers (see server.ts), so by the time fetch() resolves
+        // here, it's already on disk - safe to refresh the sidebar now
+        // instead of waiting for the whole model response to finish.
+        loadChatList();
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
