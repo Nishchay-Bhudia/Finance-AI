@@ -15,7 +15,11 @@ app.use(express.static('public'));
 app.use('/outputs', express.static('outputs'));
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
-const messages: ChatMessage[] = [];
+
+// One message array per chatId, instead of a single shared one. This lives
+// outside the route handler so it survives across requests - if it were
+// declared inside app.post, it would reset on every single message.
+const conversations = new Map<string, ChatMessage[]>();
 
 // When the model calls a tool with the wrong field names, the AI SDK wraps
 // the real reason (a Zod validation error) a few layers deep inside the
@@ -27,13 +31,19 @@ function describeInvalidToolCall(call: any): string {
 }
 
 app.post('/chat', async (req: Request, res: Response) => {
-  const { message } = req.body;
+  const { message, chatId } = req.body;
   const deliverables: string[] = Array.isArray(req.body.deliverables) ? req.body.deliverables : [];
 
   const requestedPdf = deliverables.includes('pdf');
   const requestedCsv = deliverables.includes('csv');
   const requestedGraph = deliverables.includes('graph');
   const requestedOutput = requestedPdf || requestedCsv || requestedGraph;
+
+  // First message from a new chatId - start it off with an empty history.
+  if (!conversations.has(chatId)) {
+    conversations.set(chatId, []);
+  }
+  const messages = conversations.get(chatId)!;
 
   messages.push({ role: 'user', content: message });
   resetLatestGraph();

@@ -360,6 +360,7 @@
       <div class="mark">V</div>
       <h1>Finance Assistant</h1>
       <span class="sub">powered by Valyu</span>
+      <button type="button" id="new-chat">New chat</button>
       <div class="status-pill"><span class="status-dot"></span>ready</div>
     </div>
   </header>
@@ -399,7 +400,17 @@
     const sendBtn = document.getElementById('send-btn');
     const statusPill = document.querySelector('.status-pill');
     const deliverableInputs = document.querySelectorAll('.deliverables input');
+    const newChatButton = document.getElementById('new-chat');
+    let chatId = Date.now().toString();
     deliverableInputs.forEach(input => { input.checked = false; });
+
+    newChatButton.addEventListener('click', () => {
+      chatId = Date.now().toString();
+      log.innerHTML = '';
+      input.value = '';
+      deliverableInputs.forEach(input => { input.checked = false; });
+      input.focus();
+    });
 
     function clearEmptyState() {
       if (emptyState) emptyState.remove();
@@ -506,6 +517,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            chatId,
             message,
             deliverables: Array.from(deliverableInputs).filter(input => input.checked).map(input => input.value),
           }),
