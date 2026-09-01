@@ -15,23 +15,13 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/outputs', express.static('outputs'));
 
-// files/images are only ever set on assistant messages, and only when that
-// turn actually produced a PDF/CSV (files) or a graph (images) - without
-// these, reopening an old chat had no way to know a file was ever made.
 type ChatMessage = { role: 'user' | 'assistant'; content: string; files?: string[]; images?: string[] };
-// title is only set once the user renames a chat - until then the sidebar
-// just shows a preview of the first message instead.
 type Conversation = { filename: string; title?: string; messages: ChatMessage[] };
 
 const CHATS_DIR = './outputs';
 
-// One conversation per chatId, instead of a single shared one. This lives
-// outside the route handler so it survives across requests - if it were
-// declared inside app.post, it would reset on every single message.
 const conversations = new Map<string, Conversation>();
 
-// Read back any chats saved from a previous run, so restarting the server
-// doesn't lose them. Runs once, when this file first loads.
 function loadConversations() {
   if (!existsSync(CHATS_DIR)) return;
 
@@ -42,38 +32,23 @@ function loadConversations() {
       const saved = JSON.parse(readFileSync(`${CHATS_DIR}/${file}`, 'utf8'));
       conversations.set(saved.chatId, { filename: file, title: saved.title, messages: saved.messages });
     } catch {
-      // Not one of our chat files, or corrupted - skip it rather than
-      // crash the whole server on startup.
     }
   }
 }
 
 loadConversations();
 
-// Writes a conversation's full message list to its file. Called after every
-// message, not just at the end, so a crash mid-conversation doesn't lose it.
 function saveConversation(chatId: string, conversation: Conversation) {
   if (!existsSync(CHATS_DIR)) mkdirSync(CHATS_DIR);
   const filepath = `${CHATS_DIR}/${conversation.filename}`;
   writeFileSync(filepath, JSON.stringify({ chatId, title: conversation.title, messages: conversation.messages }, null, 2));
 }
 
-// When the model calls a tool with the wrong field names, the AI SDK wraps
-// the real reason (a Zod validation error) a few layers deep inside the
-// tool call. This just digs it out so we can show the model what it did
-// wrong instead of a generic "try again".
 function describeInvalidToolCall(call: any): string {
   const schemaError = call.error?.cause?.cause?.message ?? call.error?.message;
   return `Your call to ${call.toolName} was invalid: ${schemaError ?? 'bad input'}. Fix it and call the tool again with the correct field names.`;
 }
 
-// With toolChoice: 'required', the model calls a tool on every step no
-// matter what - a capable model like Mistral will happily keep calling
-// exportPdf again and again, generating a fresh PDF every time, right up to
-// the step limit, once the deliverable it already produced isn't enough to
-// make it stop on its own. This checks the tool results seen so far and
-// tells the agent loop to stop the moment every requested deliverable has
-// one successful result, instead of relying on the step count alone.
 function deliverablesSatisfied(deliverables: string[]): StopCondition<ToolSet> {
   const requestedPdf = deliverables.includes('pdf');
   const requestedCsv = deliverables.includes('csv');
@@ -154,9 +129,6 @@ app.post('/chat', async (req: Request, res: Response) => {
   const requestedGraph = deliverables.includes('graph');
   const requestedOutput = requestedPdf || requestedCsv || requestedGraph;
 
-  // First message from a new chatId - name its file after this first
-  // message (same safeName pattern exportPdf/exportCsv use), and start it
-  // off with an empty history.
   if (!conversations.has(chatId)) {
     const safeName = message.slice(0, 60).toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const filename = `${safeName || 'chat'}-${chatId}.json`;
@@ -213,10 +185,6 @@ Rules:
     const images: string[] = [];
     const errors: string[] = [];
 
-    // Mistral honors toolChoice: 'required' properly, so this loop rarely
-    // needs more than one attempt now - it's kept as a safety net for the
-    // rare invalid tool call or a tool that ran but rejected its input
-    // (like exportPdf rejecting a one-line report).
     const MAX_ATTEMPTS = 5;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const result = streamText({
@@ -261,10 +229,6 @@ Rules:
       if (gotPdf && gotCsv && gotGraph) break;
 
       if (attempt < MAX_ATTEMPTS) {
-        // Prefer telling the model exactly what went wrong - a bad tool
-        // call, or a tool that ran but rejected its input (like exportPdf
-        // rejecting a one-line report) - over the generic nudge, which
-        // doesn't say why the last attempt didn't count.
         const invalidCall = (await result.toolCalls).find((call: any) => call.invalid);
         const problem = invalidCall
           ? describeInvalidToolCall(invalidCall)
@@ -278,8 +242,6 @@ Rules:
 
     let outputText: string;
     if (!requestedOutput) {
-      // The system prompt already tells the model to stay markdown-free,
-      // so we can just forward its reply as-is.
       outputText = text;
     } else {
       const gotPdf = !requestedPdf || files.some((file) => file.endsWith('.pdf'));
@@ -291,13 +253,6 @@ Rules:
         : `I could not complete the selected deliverables. ${errors.join(' ') || 'A required tool did not finish.'}`;
     }
 
-    // Save outputText, not the raw text - for a deliverable request, text
-    // is whatever the model wrote on its last retry attempt, which can be
-    // it echoing the correction prompt back instead of complying. outputText
-    // is the same clean message the user actually saw, so that's what a
-    // reopened chat should show too. files/images are attached here too -
-    // otherwise a reopened chat has no way to know this turn ever made
-    // anything, and the PDF/graph looks like it just vanished.
     messages.push({
       role: 'assistant',
       content: outputText,

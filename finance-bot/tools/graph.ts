@@ -11,11 +11,6 @@ export function resetLatestGraph() {
   latestGraphFilename = undefined;
 }
 
-//Spins up a throwaway Daytona sandbox, runs some Python in it, and downloads
-// one file it produced. This is the reusable bit — the sandbox itself doesn't
-// know or care that it's making a chart. Copy this into other projects
-//        whenever you need to run generated code somewhere isolated and pull a
-// result file back out.
 export async function runPythonAndDownloadFile(code: string, resultFilename: string) {
   const daytona = new Daytona();
   const sandbox = await daytona.create({ language: 'python' });
@@ -33,11 +28,6 @@ export async function runPythonAndDownloadFile(code: string, resultFilename: str
 
 export type ChartPoint = { label: string; value: number };
 
-// Builds the same clean-looking chart generateGraph makes, and hands back
-// the raw PNG bytes instead of writing a file - so any tool can drop a
-// graph into whatever it's building (a PDF report, say) without going
-// through the generateGraph tool first. This is the reusable piece;
-// generateGraph below is just a thin wrapper around it.
 export async function makeChartImage(title: string, type: 'bar' | 'line', points: ChartPoint[]) {
   const labels = points.map(p => JSON.stringify(p.label)).join(', ');
   const values = points.map(p => p.value).join(', ');
@@ -58,7 +48,6 @@ RED = "#DC2626"
 GRID_COLOR = "#E5E7EB"
 TEXT_COLOR = "#111827"
 
-# matplotlib's defaults look dated - a few tweaks go a long way.
 plt.rcParams.update({
     "font.size": 10,
     "text.color": TEXT_COLOR,
@@ -76,14 +65,10 @@ def hide_borders():
 
 
 if chart_type == "bar":
-    # sort so the biggest bar ends up on top - easier to scan
     pairs = sorted(zip(labels, values), key=lambda pair: pair[1])
     sorted_labels = [pair[0] for pair in pairs]
     sorted_values = [pair[1] for pair in pairs]
 
-    # A fixed figure height makes very few bars look absurd - one bar
-    # would stretch to fill the whole thing. Scale height with the bar
-    # count instead, so a single bar gets a short figure.
     height = max(1.8, min(4.5, len(sorted_labels) * 0.8 + 1))
     fig, ax = plt.subplots(figsize=(7.5, height))
 
@@ -111,8 +96,6 @@ if chart_type == "bar":
 else:
     fig, ax = plt.subplots(figsize=(7.5, 4.6))
 
-    # Color the whole chart like a real stock app: green if it ended up
-    # higher than it started, red if it ended up lower.
     change = values[-1] - values[0]
     percent_change = (change / values[0] * 100) if values[0] else 0
     trend_color = GREEN if change >= 0 else RED
@@ -121,8 +104,6 @@ else:
     ax.plot(x, values, color=trend_color, linewidth=2.6, zorder=3)
     ax.fill_between(x, values, min(values), color=trend_color, alpha=0.08, zorder=1)
 
-    # Markers only at the start and end - a dot on every point gets
-    # noisy once there are more than a handful of points.
     ax.scatter(
         [0, len(values) - 1],
         [values[0], values[-1]],
@@ -153,8 +134,6 @@ else:
     ax.set_axisbelow(True)
     hide_borders()
 
-    # Leave room above the axes for a two-line title: the chart title
-    # itself, plus a colored subtitle showing the actual change.
     fig.subplots_adjust(top=0.78, bottom=0.2)
     fig.text(0.06, 0.93, title, fontsize=16, fontweight="bold")
     fig.text(

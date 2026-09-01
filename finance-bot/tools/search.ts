@@ -18,7 +18,7 @@ export async function searchFinanceData(query: string) {
     signal: AbortSignal.timeout(60000),
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': process.env.VALYU_API_KEY!, // ! is like saying trust me to ts this is legit
+      'x-api-key': process.env.VALYU_API_KEY!,
     },
     body: JSON.stringify({
       query: searchQuery,
@@ -33,13 +33,9 @@ export async function searchFinanceData(query: string) {
 
   const data = await res.json() as { results?: { title: string; url: string; content: unknown }[] };
 
-  // Valyu sometimes returns content as a JSON object instead of a string -
-  // normalize both shapes down to plain text before truncating.
   const contentToText = (content: unknown) =>
     typeof content === 'string' ? content : JSON.stringify(content);
 
-  // Keep only what matters, and cap each result's content so the whole
-  // payload stays small.
   const results = (data.results ?? []).map((result) => ({
     title: result.title,
     url: result.url,
