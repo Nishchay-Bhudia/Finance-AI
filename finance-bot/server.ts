@@ -15,7 +15,10 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/outputs', express.static('outputs'));
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string };
+// files/images are only ever set on assistant messages, and only when that
+// turn actually produced a PDF/CSV (files) or a graph (images) - without
+// these, reopening an old chat had no way to know a file was ever made.
+type ChatMessage = { role: 'user' | 'assistant'; content: string; files?: string[]; images?: string[] };
 // title is only set once the user renames a chat - until then the sidebar
 // just shows a preview of the first message instead.
 type Conversation = { filename: string; title?: string; messages: ChatMessage[] };
@@ -156,7 +159,7 @@ Rules:
 6. For a selected graph, call generateGraph with a valid bar or line type and real numeric points. Prefer several points over one - if the search results include a price history, plot multiple dates instead of just the latest price. If graph is the only selection, create only the graph.
 7. If graph is selected with PDF, call generateGraph first, wait for its result, then call exportPdf with its returned imageFilename so the graph is embedded.
 8. If graph is selected with CSV, include the graph data and returned PNG filename in exportCsv.
-9. For a selected PDF, include a complete detailed report with all requested figures and news. If there's a real price history or other numeric series to chart, pass chartType and chartPoints to exportPdf so the report includes a graph, even if graph wasn't separately selected.
+9. For a selected PDF, the content field must be several full sentences or paragraphs, not a single line - cover the figure itself, what it means, and any other real facts or news from the search results. A one-sentence report is not acceptable. If there's a real price history or other numeric series in the search results, pass chartType and chartPoints to exportPdf so the report includes a graph, even if graph wasn't separately selected.
 10. For a selected CSV, include every useful real numeric value in rows.
 11. After all selected deliverables finish, reply with a short plain-prose confirmation only. Do not output the report, CSV, Markdown, or file contents in chat.
 12. Never use Markdown syntax (no **, #, bullet dashes, numbered lists, code fences). Reply in plain natural prose, every time.`;
@@ -229,10 +232,16 @@ Rules:
       if (gotPdf && gotCsv && gotGraph) break;
 
       if (attempt < MAX_ATTEMPTS) {
+        // Prefer telling the model exactly what went wrong - a bad tool
+        // call, or a tool that ran but rejected its input (like exportPdf
+        // rejecting a one-line report) - over the generic nudge, which
+        // doesn't say why the last attempt didn't count.
         const invalidCall = (await result.toolCalls).find((call: any) => call.invalid);
         const problem = invalidCall
           ? describeInvalidToolCall(invalidCall)
-          : `You did not finish the selected deliverables (${deliverables.join(', ')}). Call the required tool now, using the real numbers from the search results above. Do not reply with plain text.`;
+          : errors.length > 0
+            ? `${errors.join(' ')} Fix that and call the tool again.`
+            : `You did not finish the selected deliverables (${deliverables.join(', ')}). Call the required tool now, using the real numbers from the search results above. Do not reply with plain text.`;
 
         modelMessages = [...modelMessages, { role: 'user', content: problem }];
       }
@@ -257,8 +266,15 @@ Rules:
     // is whatever the model wrote on its last retry attempt, which can be
     // it echoing the correction prompt back instead of complying. outputText
     // is the same clean message the user actually saw, so that's what a
-    // reopened chat should show too.
-    messages.push({ role: 'assistant', content: outputText });
+    // reopened chat should show too. files/images are attached here too -
+    // otherwise a reopened chat has no way to know this turn ever made
+    // anything, and the PDF/graph looks like it just vanished.
+    messages.push({
+      role: 'assistant',
+      content: outputText,
+      files: files.length > 0 ? files : undefined,
+      images: images.length > 0 ? images : undefined,
+    });
     saveConversation(chatId, conversation);
 
     send('done', { text: outputText, files, images, usedSearch: true });
