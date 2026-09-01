@@ -740,7 +740,7 @@
       } else {
         messages.forEach(msg => {
           if (msg.role === 'user') addUserMessage(msg.content);
-          else addAssistantMessage(msg.content, [], false, []);
+          else addAssistantMessage(msg.content, msg.files || [], true, msg.images || []);
         });
       }
 
