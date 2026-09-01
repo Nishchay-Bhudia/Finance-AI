@@ -28,16 +28,29 @@ export const exportPdf = tool({
   inputSchema: z.object({
     title: z.string().describe('Short title for the report, used as the filename and heading. Required on every call, even when content is long.'),
     content: z.string().describe('The full body text to put in the PDF'),
-    imageFilename: z.string().optional().describe('The PNG filename returned by generateGraph, if a graph was requested separately'),
-    chartType: z.enum(['bar', 'line']).optional().describe('Set this (with chartPoints) to have exportPdf draw its own graph, instead of needing a separate generateGraph call first'),
+    // .nullish() (not .optional()) on purpose: the local model often sends
+    // an explicit null instead of just leaving an unused field out, and
+    // .optional() alone rejects null as invalid - that was silently eating
+    // retry attempts and leaving the report half-written by the time a
+    // call finally got accepted.
+    imageFilename: z.string().nullish().describe('The PNG filename returned by generateGraph, if a graph was requested separately'),
+    chartType: z.enum(['bar', 'line']).nullish().describe('Set this (with chartPoints) to have exportPdf draw its own graph, instead of needing a separate generateGraph call first'),
     chartPoints: z.array(
       z.object({
         label: z.string().describe('e.g. a company name or date'),
         value: z.number().describe('The numerical value to plot'),
       })
-    ).optional().describe('Real numeric data points to chart alongside the report - only used when chartType is also set'),
+    ).nullish().describe('Real numeric data points to chart alongside the report - only used when chartType is also set'),
   }),
   execute: async ({ title, content, imageFilename, chartType, chartPoints }) => {
+    // A soft instruction ("write several sentences") isn't a real
+    // constraint - the model can just ignore it and still succeed. This
+    // is an actual constraint: a report this short gets rejected and sent
+    // back for a retry, the same way an invalid tool call would be.
+    if (content.trim().length < 150) {
+      return { error: 'content is too short - write at least a few full sentences covering the figure and its context, not just one line.' };
+    }
+
     if (!existsSync(OUTPUT_DIR)) {
       mkdirSync(OUTPUT_DIR);
     }

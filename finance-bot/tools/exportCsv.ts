@@ -16,7 +16,10 @@ export const exportCsv = tool({
         value: z.string().describe('The value for that item'),
       })
     ).describe('One object per row of the CSV'),
-    graphFilename: z.string().optional().describe('The PNG filename returned by generateGraph'),
+    // .nullish() (not .optional()) since the local model sometimes sends an
+    // explicit null instead of leaving the field out, and .optional() alone
+    // rejects that as invalid.
+    graphFilename: z.string().nullish().describe('The PNG filename returned by generateGraph'),
   }),
   execute: async ({ title, rows, graphFilename }) => {
     if (!existsSync(outputDir)) {
