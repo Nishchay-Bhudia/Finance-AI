@@ -2,7 +2,7 @@
 import 'dotenv/config';
 import express from 'express';
 import type { Request, Response } from 'express';
-import { streamText, stepCountIs } from 'ai';
+import { streamText, stepCountIs, type StopCondition, type ToolSet } from 'ai';
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { model } from './lib/ai.js';
 import { searchFinanceData } from './tools/search.js';
@@ -65,6 +65,38 @@ function saveConversation(chatId: string, conversation: Conversation) {
 function describeInvalidToolCall(call: any): string {
   const schemaError = call.error?.cause?.cause?.message ?? call.error?.message;
   return `Your call to ${call.toolName} was invalid: ${schemaError ?? 'bad input'}. Fix it and call the tool again with the correct field names.`;
+}
+
+// With toolChoice: 'required', the model calls a tool on every step no
+// matter what - a capable model like Mistral will happily keep calling
+// exportPdf again and again, generating a fresh PDF every time, right up to
+// the step limit, once the deliverable it already produced isn't enough to
+// make it stop on its own. This checks the tool results seen so far and
+// tells the agent loop to stop the moment every requested deliverable has
+// one successful result, instead of relying on the step count alone.
+function deliverablesSatisfied(deliverables: string[]): StopCondition<ToolSet> {
+  const requestedPdf = deliverables.includes('pdf');
+  const requestedCsv = deliverables.includes('csv');
+  const requestedGraph = deliverables.includes('graph');
+
+  return ({ steps }) => {
+    let gotPdf = !requestedPdf;
+    let gotCsv = !requestedCsv;
+    let gotGraph = !requestedGraph;
+
+    for (const step of steps) {
+      for (const toolResult of step.toolResults) {
+        const output = (toolResult as any).output as { filename?: string } | undefined;
+        if (!output?.filename) continue;
+
+        if ((toolResult as any).toolName === 'generateGraph') gotGraph = true;
+        else if (output.filename.endsWith('.pdf')) gotPdf = true;
+        else if (output.filename.endsWith('.csv')) gotCsv = true;
+      }
+    }
+
+    return gotPdf && gotCsv && gotGraph;
+  };
 }
 
 app.get('/chats', (_req: Request, res: Response) => {
@@ -183,13 +215,10 @@ Rules:
     const images: string[] = [];
     const errors: string[] = [];
 
-    // Our local Ollama model doesn't actually honor toolChoice: 'required'
-    // (this provider just ignores it), and it's small enough that it
-    // sometimes replies with nothing at all instead of calling a tool, or
-    // gets a field name wrong. If that happens for a deliverable request,
-    // tell it exactly what went wrong and give it another attempt. 3 wasn't
-    // always enough - a "reply with nothing" miss can happen two attempts
-    // in a row, so give it more room before giving up.
+    // Mistral honors toolChoice: 'required' properly, so this loop rarely
+    // needs more than one attempt now - it's kept as a safety net for the
+    // rare invalid tool call or a tool that ran but rejected its input
+    // (like exportPdf rejecting a one-line report).
     const MAX_ATTEMPTS = 5;
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const result = streamText({
@@ -197,7 +226,9 @@ Rules:
         instructions,
         ...(requestedOutput ? { tools, toolChoice: 'required' as const } : {}),
         maxRetries: 0,
-        stopWhen: stepCountIs(50),
+        stopWhen: requestedOutput
+          ? [stepCountIs(50), deliverablesSatisfied(deliverables)]
+          : stepCountIs(50),
         messages: modelMessages,
       });
 

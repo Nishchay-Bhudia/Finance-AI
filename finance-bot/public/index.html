@@ -823,6 +823,55 @@
       addRow('assistant', msg);
     }
 
+    function beginStreamingAssistantMessage() {
+      const msg = document.createElement('div');
+      msg.className = 'msg';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      msg.appendChild(bubble);
+      addRow('assistant', msg);
+      return { msg, bubble };
+    }
+
+    function finishStreamingAssistantMessage(streaming, text, files, usedSearch, images) {
+      const { msg, bubble } = streaming;
+      bubble.textContent = text || 'No response.';
+
+      if (usedSearch) {
+        const tag = document.createElement('div');
+        tag.className = 'sources-tag';
+        tag.textContent = 'Grounded by search';
+        msg.insertBefore(tag, bubble);
+      }
+
+      if (files && files.length) {
+        const fileRow = document.createElement('div');
+        fileRow.className = 'files';
+        files.forEach(f => {
+          const ext = f.split('.').pop().toUpperCase();
+          const a = document.createElement('a');
+          a.className = 'file-chip';
+          a.href = '/outputs/' + f;
+          a.target = '_blank';
+          a.innerHTML = '<span class="ext">' + ext + '</span>' + f;
+          fileRow.appendChild(a);
+        });
+        msg.appendChild(fileRow);
+      }
+
+      if (images && images.length) {
+        images.forEach(image => {
+          const chart = document.createElement('img');
+          chart.className = 'chat-image';
+          chart.src = '/outputs/' + image;
+          chart.alt = 'Generated financial graph';
+          msg.appendChild(chart);
+        });
+      }
+
+      log.scrollTop = log.scrollHeight;
+    }
+
     function addSearchingIndicator() {
       const msg = document.createElement('div');
       msg.className = 'msg';
@@ -879,6 +928,11 @@
         let files = [];
         let images = [];
         let usedSearch = false;
+        // Only set once the first 'text' chunk arrives - a deliverable
+        // request (PDF/CSV/graph) never streams text, it only gets a
+        // 'done' event, so this stays null and the message renders once,
+        // same as before.
+        let streaming = null;
 
         while (true) {
           const { value, done } = await reader.read();
@@ -892,7 +946,15 @@
             if (!payload) continue;
             const data = JSON.parse(payload);
 
-            if (type === 'text') text += data;
+            if (type === 'text') {
+              text += data;
+              if (!streaming) {
+                removeSearchingIndicator();
+                streaming = beginStreamingAssistantMessage();
+              }
+              streaming.bubble.textContent = text;
+              log.scrollTop = log.scrollHeight;
+            }
             if (type === 'done') {
               text = data.text || text;
               files = data.files || [];
@@ -905,7 +967,11 @@
           if (done) break;
         }
 
-        addAssistantMessage(text || 'No response.', files, usedSearch, images);
+        if (streaming) {
+          finishStreamingAssistantMessage(streaming, text, files, usedSearch, images);
+        } else {
+          addAssistantMessage(text || 'No response.', files, usedSearch, images);
+        }
       } catch (err) {
         removeSearchingIndicator();
         addAssistantMessage(err.message || 'Something went wrong reaching the server.');
