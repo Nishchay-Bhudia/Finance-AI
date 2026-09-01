@@ -577,9 +577,6 @@
     let chatId = Date.now().toString();
     deliverableInputs.forEach(input => { input.checked = false; });
 
-    // Keeps chatId and localStorage in sync in one place, so a page
-    // refresh can look up "what was I last looking at" instead of always
-    // starting a fresh conversation.
     function setChatId(id) {
       chatId = id;
       localStorage.setItem('chatId', id);
@@ -654,9 +651,6 @@
       editInput.focus();
       editInput.select();
 
-      // blur fires when loadChatList() below removes this input from the
-      // DOM too, so without this guard, pressing Escape would still save -
-      // the blur it triggers would run finish(true) right after finish(false).
       let settled = false;
 
       const finish = async (save) => {
@@ -683,10 +677,6 @@
       });
     }
 
-    // A native confirm() blocks the whole page until it's dismissed - it
-    // also looks jarring next to a styled sidebar. This does the same job
-    // (deleting is genuinely irreversible, so it still deserves a real
-    // confirmation step) as an inline swap within the chat item instead.
     function confirmDelete(item, titleEl, actions, id) {
       const label = document.createElement('div');
       label.className = 'chat-item-title';
@@ -909,15 +899,6 @@
         removeSearchingIndicator();
         if (!res.ok || !res.body) throw new Error('The server did not return a response.');
 
-        // The server saves the user's message to disk before it even sends
-        // response headers (see server.ts), so by the time fetch() resolves
-        // here, it's already on disk - safe to refresh the sidebar now
-        // instead of waiting for the whole model response to finish.
-        //
-        // setChatId (not a raw assignment) matters here even though chatId
-        // isn't changing - it's what makes localStorage aware of a chat
-        // that started from the page's default id rather than "New chat"
-        // or openChat, so a later refresh can still find it.
         setChatId(chatId);
         loadChatList();
 
@@ -928,10 +909,6 @@
         let files = [];
         let images = [];
         let usedSearch = false;
-        // Only set once the first 'text' chunk arrives - a deliverable
-        // request (PDF/CSV/graph) never streams text, it only gets a
-        // 'done' event, so this stays null and the message renders once,
-        // same as before.
         let streaming = null;
 
         while (true) {
@@ -995,9 +972,6 @@
       chip.addEventListener('click', () => send(chip.dataset.q));
     });
 
-    // Whatever chat was open when the page last closed or refreshed - if
-    // it actually has messages saved, reopen it. Otherwise just show the
-    // sidebar with nothing selected, same as a first-ever visit.
     async function restoreLastChat() {
       const savedId = localStorage.getItem('chatId');
       if (savedId) {
