@@ -16,7 +16,7 @@ export function resetLatestGraph() {
 // know or care that it's making a chart. Copy this into other projects
 //        whenever you need to run generated code somewhere isolated and pull a
 // result file back out.
-async function runPythonAndDownloadFile(code: string, resultFilename: string) {
+export async function runPythonAndDownloadFile(code: string, resultFilename: string) {
   const daytona = new Daytona();
   const sandbox = await daytona.create({ language: 'python' });
 

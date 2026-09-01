@@ -188,13 +188,11 @@ Rules:
 3. The selected deliverables are: ${deliverables.join(', ') || 'none'}.
 4. Search results are already available, but call searchFinance again when more information is needed.
 5. Complete every selected deliverable before replying. Use only real data from searchFinance.
-6. For a selected graph, call generateGraph with a valid bar or line type and real numeric points. Prefer several points over one - if the search results include a price history, plot multiple dates instead of just the latest price. If graph is the only selection, create only the graph.
-7. If graph is selected with PDF, call generateGraph first, wait for its result, then call exportPdf with its returned imageFilename so the graph is embedded.
-8. If graph is selected with CSV, include the graph data and returned PNG filename in exportCsv.
-9. For a selected PDF, the content field must be several full sentences or paragraphs, not a single line - cover the figure itself, what it means, and any other real facts or news from the search results. A one-sentence report is not acceptable. If there's a real price history or other numeric series in the search results, pass chartType and chartPoints to exportPdf so the report includes a graph, even if graph wasn't separately selected.
-10. For a selected CSV, include every useful real numeric value in rows.
-11. After all selected deliverables finish, reply with a short plain-prose confirmation only. Do not output the report, CSV, Markdown, or file contents in chat.
-12. Never use Markdown syntax (no **, #, bullet dashes, numbered lists, code fences). Reply in plain natural prose, every time.`;
+6. For a selected graph, call generateGraph with a valid bar or line type and real numeric points. Prefer several points over one - if the search results include a price history, plot multiple dates instead of just the latest price.
+7. For a selected PDF, the content field must be several full sentences or paragraphs, not a single line - cover the figure itself, what it means, and any other real facts or news from the search results. A one-sentence report is not acceptable. If there's a real price history or other numeric series in the search results, pass chartType and chartPoints to exportPdf so the report includes its own chart.
+8. For a selected CSV, include every useful real numeric value in rows.
+9. After all selected deliverables finish, reply with a short plain-prose confirmation only. Do not output the report, CSV, Markdown, or file contents in chat.
+10. Never use Markdown syntax (no **, #, bullet dashes, numbered lists, code fences). Reply in plain natural prose, every time.`;
 
     const tools = {
       ...(requestedPdf ? { exportPdf } : {}),
