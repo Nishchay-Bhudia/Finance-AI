@@ -197,7 +197,7 @@ Rules:
         instructions,
         ...(requestedOutput ? { tools, toolChoice: 'required' as const } : {}),
         maxRetries: 0,
-        stopWhen: stepCountIs(20),
+        stopWhen: stepCountIs(50),
         messages: modelMessages,
       });
 
