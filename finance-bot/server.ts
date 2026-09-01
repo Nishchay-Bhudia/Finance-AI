@@ -49,6 +49,17 @@ function describeInvalidToolCall(call: any): string {
   return `Your call to ${call.toolName} was invalid: ${schemaError ?? 'bad input'}. Fix it and call the tool again with the correct field names.`;
 }
 
+function inferDeliverables(message: string): string[] {
+  const text = message.toLowerCase();
+  const found: string[] = [];
+
+  if (/\bpdf\b|\breport\b|\bdocument\b/.test(text)) found.push('pdf');
+  if (/\bcsv\b|\bspreadsheet\b|\bexcel\b/.test(text)) found.push('csv');
+  if (/\bgraph\b|\bchart\b|\bplot\b|\bvisuali[sz]e/.test(text)) found.push('graph');
+
+  return found;
+}
+
 function deliverablesSatisfied(deliverables: string[]): StopCondition<ToolSet> {
   const requestedPdf = deliverables.includes('pdf');
   const requestedCsv = deliverables.includes('csv');
@@ -122,7 +133,8 @@ app.delete('/chats/:chatId', (req: Request, res: Response) => {
 
 app.post('/chat', async (req: Request, res: Response) => {
   const { message, chatId } = req.body;
-  const deliverables: string[] = Array.isArray(req.body.deliverables) ? req.body.deliverables : [];
+  const checkedDeliverables: string[] = Array.isArray(req.body.deliverables) ? req.body.deliverables : [];
+  const deliverables = Array.from(new Set([...checkedDeliverables, ...inferDeliverables(message)]));
 
   const requestedPdf = deliverables.includes('pdf');
   const requestedCsv = deliverables.includes('csv');
