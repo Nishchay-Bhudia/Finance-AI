@@ -5,7 +5,7 @@ import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
 
 const output = './outputs';
 
-export let latestGraphFilename: string | undefined;
+export let latestGraphFilename: string | undefined ;
 
 export function resetLatestGraph() {
   latestGraphFilename = undefined;
@@ -31,26 +31,18 @@ async function runPythonAndDownloadFile(code: string, resultFilename: string) {
   }
 }
 
-export const generateGraph = tool({
-  description:
-    'Generate a graph image from structured data. Call this only after searchFinance returns real numeric figures. Always provide a chart type and at least one point with a label and number. Do not call this with empty points or invented values. A single point makes a boring, near-useless graph - if the search results include a price history (a list of dates/prices, not just the latest price), pass several of those points instead of just one.',
-  inputSchema: z.object({
-    title: z.string().describe('Chart title , make it relevant to the figures of the chart'),
-    type: z.enum(['bar', 'line']).describe('The field must be named "type" (not "chartType"). Use bar for comparing figures and line for figures over time'),
-    points: z.array(
-      z.object({
-        label: z.string().describe('e.g. a company name or date'),
-        value: z.number().describe('The numerical value to plot'),
-      })
-    ).min(1).describe('Real numeric data points from searchFinance'),
-  }),
-  execute: async ({ title, type, points }) => {
-    if (!existsSync(output)) mkdirSync(output);
+export type ChartPoint = { label: string; value: number };
 
-    const labels = points.map(p => JSON.stringify(p.label)).join(', ');
-    const values = points.map(p => p.value).join(', ');
+// Builds the same clean-looking chart generateGraph makes, and hands back
+// the raw PNG bytes instead of writing a file - so any tool can drop a
+// graph into whatever it's building (a PDF report, say) without going
+// through the generateGraph tool first. This is the reusable piece;
+// generateGraph below is just a thin wrapper around it.
+export async function makeChartImage(title: string, type: 'bar' | 'line', points: ChartPoint[]) {
+  const labels = points.map(p => JSON.stringify(p.label)).join(', ');
+  const values = points.map(p => p.value).join(', ');
 
-    const pythonCode = `
+  const pythonCode = `
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -177,8 +169,27 @@ else:
 plt.savefig("graph.png", dpi=170)
 `;
 
+  return runPythonAndDownloadFile(pythonCode, 'graph.png');
+}
+
+export const generateGraph = tool({
+  description:
+    'Generate a graph image from structured data. Call this only after searchFinance returns real numeric figures. Always provide a chart type and at least one point with a label and number. Do not call this with empty points or invented values. A single point makes a boring, near-useless graph - if the search results include a price history (a list of dates/prices, not just the latest price), pass several of those points instead of just one.',
+  inputSchema: z.object({
+    title: z.string().describe('Chart title , make it relevant to the figures of the chart'),
+    type: z.enum(['bar', 'line']).describe('The field must be named "type" (not "chartType"). Use bar for comparing figures and line for figures over time'),
+    points: z.array(
+      z.object({
+        label: z.string().describe('e.g. a company name or date'),
+        value: z.number().describe('The numerical value to plot'),
+      })
+    ).min(1).describe('Real numeric data points from searchFinance'),
+  }),
+  execute: async ({ title, type, points }) => {
+    if (!existsSync(output)) mkdirSync(output);
+
     try {
-      const fileBuffer = await runPythonAndDownloadFile(pythonCode, 'graph.png');
+      const fileBuffer = await makeChartImage(title, type, points);
 
       const safeName = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const filename = `${safeName}-${Date.now()}.png`;

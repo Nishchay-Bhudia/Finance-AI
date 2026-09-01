@@ -156,7 +156,7 @@ Rules:
 6. For a selected graph, call generateGraph with a valid bar or line type and real numeric points. Prefer several points over one - if the search results include a price history, plot multiple dates instead of just the latest price. If graph is the only selection, create only the graph.
 7. If graph is selected with PDF, call generateGraph first, wait for its result, then call exportPdf with its returned imageFilename so the graph is embedded.
 8. If graph is selected with CSV, include the graph data and returned PNG filename in exportCsv.
-9. For a selected PDF, include a complete detailed report with all requested figures and news.
+9. For a selected PDF, include a complete detailed report with all requested figures and news. If there's a real price history or other numeric series to chart, pass chartType and chartPoints to exportPdf so the report includes a graph, even if graph wasn't separately selected.
 10. For a selected CSV, include every useful real numeric value in rows.
 11. After all selected deliverables finish, reply with a short plain-prose confirmation only. Do not output the report, CSV, Markdown, or file contents in chat.
 12. Never use Markdown syntax (no **, #, bullet dashes, numbered lists, code fences). Reply in plain natural prose, every time.`;
