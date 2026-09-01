@@ -1,13 +1,11 @@
-import { ollama } from 'ai-sdk-ollama';
+import { createMistral } from '@ai-sdk/mistral';
 
-export const model = ollama('qwen2.5:3b', {
-	think: false,
-	options: {
-		num_predict: 500,
-		// Ollama defaults to a 2048-token context window no matter what the
-		// model itself supports, which was silently truncating our prompts
-		// (system instructions + tool schemas + search results) and making
-		// the model forget it had tools to call. Give it more room.
-		num_ctx: 8192,
-	},
+const mistral = createMistral({
+	apiKey: process.env.MISTRAL_API_KEY,
 });
+
+// ministral-3b is Mistral's smallest hosted model - cheap on tokens, and
+// unlike the local Ollama model, it actually honors toolChoice: 'required'
+// and handles tool-call schemas reliably, so the retry loop in server.ts
+// should rarely need more than one attempt now.
+export const model = mistral('ministral-3b-latest');

@@ -12,9 +12,9 @@
   "keywords": [],
   "type": "module",
   "dependencies": {
+    "@ai-sdk/mistral": "^4.0.37",
     "@daytona/sdk": "^0.207.0",
     "ai": "^7.0.77",
-    "ai-sdk-ollama": "^4.2.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "pdfkit": "^0.20.1",
