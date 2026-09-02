@@ -1,9 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { put } from '@vercel/blob';
 import { runPythonAndDownloadFile } from './graph.js';
-
-const output = './outputs';
 
 function stripMarkdown(text: string) {
   return text
@@ -33,8 +31,6 @@ export const exportPdf = tool({
     if (content.trim().length < 150) {
       return { error: 'content is too short - write at least a few full sentences covering the figure and its context, not just one line.' };
     }
-
-    if (!existsSync(output)) mkdirSync(output);
 
     const paragraphs = stripMarkdown(content)
       .split(/\n+/)
@@ -124,9 +120,14 @@ doc.build(elements)
 
       const safeName = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const filename = `${safeName}-${Date.now()}.pdf`;
-      writeFileSync(`${output}/${filename}`, fileBuffer);
+      const blob = await put(`files/${filename}`, fileBuffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType: 'application/pdf',
+      });
 
-      return { filename };
+      return { filename, url: blob.url, downloadUrl: blob.downloadUrl };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { error: `pdf generation failed: ${message}` };

@@ -3,7 +3,7 @@ import 'dotenv/config';
 import express from 'express';
 import type { Request, Response } from 'express';
 import { streamText, stepCountIs, type StopCondition, type ToolSet } from 'ai';
-import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { put, list, del } from '@vercel/blob';
 import { model } from './lib/ai.js';
 import { searchFinanceData } from './tools/search.js';
 import { exportPdf } from './tools/exportPdf.js';
@@ -13,35 +13,43 @@ import { generateGraph, resetLatestGraph } from './tools/graph.js';
 const app = express();
 app.use(express.json());
 app.use(express.static('public'));
-app.use('/outputs', express.static('outputs'));
 
-type ChatMessage = { role: 'user' | 'assistant'; content: string; files?: string[]; images?: string[] };
-type Conversation = { filename: string; title?: string; messages: ChatMessage[] };
+type ChatFile = { name: string; url: string; downloadUrl: string };
+type ChatMessage = { role: 'user' | 'assistant'; content: string; files?: ChatFile[]; images?: ChatFile[] };
+type Conversation = { title?: string; messages: ChatMessage[] };
 
-const CHATS_DIR = './outputs';
+const CHATS_PREFIX = 'chats/';
 
-const conversations = new Map<string, Conversation>();
-
-function loadConversations() {
-  if (!existsSync(CHATS_DIR)) return;
-
-  for (const file of readdirSync(CHATS_DIR)) {
-    if (!file.endsWith('.json')) continue;
-
-    try {
-      const saved = JSON.parse(readFileSync(`${CHATS_DIR}/${file}`, 'utf8'));
-      conversations.set(saved.chatId, { filename: file, title: saved.title, messages: saved.messages });
-    } catch {
-    }
-  }
+async function loadConversation(chatId: string): Promise<Conversation | null> {
+  const { blobs } = await list({ prefix: `${CHATS_PREFIX}${chatId}.json`, limit: 1 });
+  if (blobs.length === 0) return null;
+  const res = await fetch(blobs[0].url);
+  return res.json();
 }
 
-loadConversations();
+async function listConversations(): Promise<{ chatId: string; conversation: Conversation }[]> {
+  const { blobs } = await list({ prefix: CHATS_PREFIX });
+  return Promise.all(
+    blobs.map(async (blob) => {
+      const res = await fetch(blob.url);
+      const conversation: Conversation = await res.json();
+      const chatId = blob.pathname.slice(CHATS_PREFIX.length, -'.json'.length);
+      return { chatId, conversation };
+    }),
+  );
+}
 
-function saveConversation(chatId: string, conversation: Conversation) {
-  if (!existsSync(CHATS_DIR)) mkdirSync(CHATS_DIR);
-  const filepath = `${CHATS_DIR}/${conversation.filename}`;
-  writeFileSync(filepath, JSON.stringify({ chatId, title: conversation.title, messages: conversation.messages }, null, 2));
+async function saveConversation(chatId: string, conversation: Conversation) {
+  await put(`${CHATS_PREFIX}${chatId}.json`, JSON.stringify(conversation), {
+    access: 'public',
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType: 'application/json',
+  });
+}
+
+async function deleteConversation(chatId: string) {
+  await del(`${CHATS_PREFIX}${chatId}.json`);
 }
 
 function describeInvalidToolCall(call: any): string {
@@ -94,22 +102,23 @@ function deliverablesSatisfied(deliverables: string[]): StopCondition<ToolSet> {
   };
 }
 
-app.get('/chats', (_req: Request, res: Response) => {
-  const chats = [...conversations.entries()].map(([chatId, conversation]) => ({
+app.get('/chats', async (_req: Request, res: Response) => {
+  const entries = await listConversations();
+  const chats = entries.map(({ chatId, conversation }) => ({
     chatId,
     preview: conversation.title ?? conversation.messages[0]?.content.slice(0, 60) ?? 'New chat',
   }));
   res.json(chats);
 });
 
-app.get('/chats/:chatId', (req: Request, res: Response) => {
-  const conversation = conversations.get(String(req.params.chatId));
+app.get('/chats/:chatId', async (req: Request, res: Response) => {
+  const conversation = await loadConversation(String(req.params.chatId));
   res.json(conversation?.messages ?? []);
 });
 
-app.patch('/chats/:chatId', (req: Request, res: Response) => {
+app.patch('/chats/:chatId', async (req: Request, res: Response) => {
   const chatId = String(req.params.chatId);
-  const conversation = conversations.get(chatId);
+  const conversation = await loadConversation(chatId);
   if (!conversation) {
     res.status(404).json({ error: 'No chat with that id.' });
     return;
@@ -122,21 +131,19 @@ app.patch('/chats/:chatId', (req: Request, res: Response) => {
   }
 
   conversation.title = title;
-  saveConversation(chatId, conversation);
+  await saveConversation(chatId, conversation);
   res.json({ chatId, title });
 });
 
-app.delete('/chats/:chatId', (req: Request, res: Response) => {
+app.delete('/chats/:chatId', async (req: Request, res: Response) => {
   const chatId = String(req.params.chatId);
-  const conversation = conversations.get(chatId);
+  const conversation = await loadConversation(chatId);
   if (!conversation) {
     res.status(404).json({ error: 'No chat with that id.' });
     return;
   }
 
-  const filepath = `${CHATS_DIR}/${conversation.filename}`;
-  if (existsSync(filepath)) unlinkSync(filepath);
-  conversations.delete(chatId);
+  await deleteConversation(chatId);
   res.json({ deleted: true });
 });
 
@@ -150,16 +157,11 @@ app.post('/chat', async (req: Request, res: Response) => {
   const requestedGraph = deliverables.includes('graph');
   const requestedOutput = requestedPdf || requestedCsv || requestedGraph;
 
-  if (!conversations.has(chatId)) {
-    const safeName = message.slice(0, 60).toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const filename = `${safeName || 'chat'}-${chatId}.json`;
-    conversations.set(chatId, { filename, messages: [] });
-  }
-  const conversation = conversations.get(chatId)!;
+  const conversation: Conversation = (await loadConversation(chatId)) ?? { messages: [] };
   const messages = conversation.messages;
 
   messages.push({ role: 'user', content: message });
-  saveConversation(chatId, conversation);
+  await saveConversation(chatId, conversation);
   resetLatestGraph();
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -202,8 +204,8 @@ Rules:
     ];
 
     let text = '';
-    const files: string[] = [];
-    const images: string[] = [];
+    const files: ChatFile[] = [];
+    const images: ChatFile[] = [];
     const errors: string[] = [];
 
     const MAX_ATTEMPTS = 5;
@@ -231,21 +233,21 @@ Rules:
       errors.length = 0;
       for (const toolResult of await result.toolResults) {
         if (!toolResult) continue;
-        const output = toolResult.output as { filename?: string; error?: string };
+        const output = toolResult.output as { filename?: string; url?: string; downloadUrl?: string; error?: string };
         if (output?.error) errors.push(`${toolResult.toolName}: ${output.error}`);
-        if (!output?.filename) continue;
+        if (!output?.filename || !output?.url || !output?.downloadUrl) continue;
 
         if (toolResult.toolName === 'generateGraph') {
-          images.push(output.filename);
+          images.push({ name: output.filename, url: output.url, downloadUrl: output.downloadUrl });
         } else {
-          files.push(output.filename);
+          files.push({ name: output.filename, url: output.url, downloadUrl: output.downloadUrl });
         }
       }
 
       if (!requestedOutput) break;
 
-      const gotPdf = !requestedPdf || files.some((file) => file.endsWith('.pdf'));
-      const gotCsv = !requestedCsv || files.some((file) => file.endsWith('.csv'));
+      const gotPdf = !requestedPdf || files.some((file) => file.name.endsWith('.pdf'));
+      const gotCsv = !requestedCsv || files.some((file) => file.name.endsWith('.csv'));
       const gotGraph = !requestedGraph || images.length > 0;
       if (gotPdf && gotCsv && gotGraph) break;
 
@@ -265,8 +267,8 @@ Rules:
     if (!requestedOutput) {
       outputText = stripMarkdown(text);
     } else {
-      const gotPdf = !requestedPdf || files.some((file) => file.endsWith('.pdf'));
-      const gotCsv = !requestedCsv || files.some((file) => file.endsWith('.csv'));
+      const gotPdf = !requestedPdf || files.some((file) => file.name.endsWith('.pdf'));
+      const gotCsv = !requestedCsv || files.some((file) => file.name.endsWith('.csv'));
       const gotGraph = !requestedGraph || images.length > 0;
 
       if (gotPdf && gotCsv && gotGraph) {
@@ -296,7 +298,7 @@ Rules:
       files: files.length > 0 ? files : undefined,
       images: images.length > 0 ? images : undefined,
     });
-    saveConversation(chatId, conversation);
+    await saveConversation(chatId, conversation);
 
     send('done', { text: outputText, files, images, usedSearch: true });
   } catch (error) {
@@ -306,4 +308,8 @@ Rules:
   }
 });
 
-app.listen(3000, () => console.log('http://localhost:3000'));
+if (!process.env.VERCEL) {
+  app.listen(3000, () => console.log('http://localhost:3000'));
+}
+
+export default app;
