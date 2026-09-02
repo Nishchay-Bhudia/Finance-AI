@@ -49,6 +49,15 @@ function describeInvalidToolCall(call: any): string {
   return `Your call to ${call.toolName} was invalid: ${schemaError ?? 'bad input'}. Fix it and call the tool again with the correct field names.`;
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/^#+\s*/gm, '')
+    .replace(/^[-*]\s+/gm, '• ');
+}
+
 function inferDeliverables(message: string): string[] {
   const text = message.toLowerCase();
   const found: string[] = [];
@@ -254,7 +263,7 @@ Rules:
 
     let outputText: string;
     if (!requestedOutput) {
-      outputText = text;
+      outputText = stripMarkdown(text);
     } else {
       const gotPdf = !requestedPdf || files.some((file) => file.endsWith('.pdf'));
       const gotCsv = !requestedCsv || files.some((file) => file.endsWith('.csv'));
@@ -275,8 +284,7 @@ Rules:
         }
         if (!summaryText) summaryText = await summaryResult.text;
 
-        summaryText = summaryText.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
-        outputText = summaryText.trim() || 'Your selected deliverables are ready.';
+        outputText = stripMarkdown(summaryText).trim() || 'Your selected deliverables are ready.';
       } else {
         outputText = `I could not complete the selected deliverables. ${errors.join(' ') || 'A required tool did not finish.'}`;
       }
