@@ -152,6 +152,52 @@
     border-top: 1px solid var(--border-soft);
   }
 
+  .signin-hint {
+    position: relative;
+    margin-bottom: 14px;
+    padding: 10px 24px 10px 12px;
+    background: var(--accent);
+    color: white;
+    font-size: 12px;
+    line-height: 1.45;
+    border-radius: 10px;
+    animation: hint-in 320ms var(--ease) both;
+  }
+
+  .signin-hint::after {
+    content: "";
+    position: absolute;
+    left: 24px;
+    bottom: -7px;
+    width: 12px;
+    height: 12px;
+    background: var(--accent);
+    transform: rotate(45deg);
+  }
+
+  @keyframes hint-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .signin-hint-close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 5px;
+  }
+
+  .signin-hint-close:hover { background: rgba(255, 255, 255, 0.15); color: white; }
+
   .signin-btn {
     width: 100%;
     padding: 9px 14px;
@@ -945,6 +991,19 @@
 
     function renderSignedOut() {
       sidebarAccount.innerHTML = '';
+
+      if (!localStorage.getItem('signinHintDismissed')) {
+        const hint = document.createElement('div');
+        hint.className = 'signin-hint';
+        hint.innerHTML = '<button type="button" class="signin-hint-close" aria-label="Dismiss">&times;</button>Sign in to save your chats and pick up where you left off';
+        hint.querySelector('.signin-hint-close').addEventListener('click', (e) => {
+          e.stopPropagation();
+          localStorage.setItem('signinHintDismissed', '1');
+          hint.remove();
+        });
+        sidebarAccount.appendChild(hint);
+      }
+
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'signin-btn';
