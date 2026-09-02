@@ -9,6 +9,8 @@ import { searchFinanceData } from './tools/search.js';
 import { exportPdf } from './tools/exportPdf.js';
 import { exportCsv } from './tools/exportCsv.js';
 import { generateGraph, resetLatestGraph } from './tools/graph.js';
+import { SESSION_COOKIE, SESSION_MAX_AGE, createMagicToken, createSessionCookie, parseCookies, verifySessionCookie } from './lib/auth.js';
+import { sendMagicLink } from './lib/email.js';
 
 const app = express();
 app.use(express.json());
@@ -18,29 +20,41 @@ type ChatFile = { name: string; url: string; downloadUrl: string };
 type ChatMessage = { role: 'user' | 'assistant'; content: string; files?: ChatFile[]; images?: ChatFile[] };
 type Conversation = { title?: string; messages: ChatMessage[] };
 
-const CHATS_PREFIX = 'chats/';
+const GUEST_PREFIX = 'chats/';
+const MAGIC_PREFIX = 'auth-tokens/';
+const MAGIC_TTL_MS = 15 * 60 * 1000;
 
-async function loadConversation(chatId: string): Promise<Conversation | null> {
-  const { blobs } = await list({ prefix: `${CHATS_PREFIX}${chatId}.json`, limit: 1 });
+function scopePrefix(scope: string) {
+  return scope === 'guest' ? GUEST_PREFIX : `users/${encodeURIComponent(scope)}/chats/`;
+}
+
+function getScope(req: Request): string {
+  return verifySessionCookie(parseCookies(req.headers.cookie)[SESSION_COOKIE]) ?? 'guest';
+}
+
+async function loadConversation(scope: string, chatId: string): Promise<Conversation | null> {
+  const prefix = scopePrefix(scope);
+  const { blobs } = await list({ prefix: `${prefix}${chatId}.json`, limit: 1 });
   if (blobs.length === 0) return null;
   const res = await fetch(blobs[0].url);
   return res.json();
 }
 
-async function listConversations(): Promise<{ chatId: string; conversation: Conversation }[]> {
-  const { blobs } = await list({ prefix: CHATS_PREFIX });
+async function listConversations(scope: string): Promise<{ chatId: string; conversation: Conversation }[]> {
+  const prefix = scopePrefix(scope);
+  const { blobs } = await list({ prefix });
   return Promise.all(
     blobs.map(async (blob) => {
       const res = await fetch(blob.url);
       const conversation: Conversation = await res.json();
-      const chatId = blob.pathname.slice(CHATS_PREFIX.length, -'.json'.length);
+      const chatId = blob.pathname.slice(prefix.length, -'.json'.length);
       return { chatId, conversation };
     }),
   );
 }
 
-async function saveConversation(chatId: string, conversation: Conversation) {
-  await put(`${CHATS_PREFIX}${chatId}.json`, JSON.stringify(conversation), {
+async function saveConversation(scope: string, chatId: string, conversation: Conversation) {
+  await put(`${scopePrefix(scope)}${chatId}.json`, JSON.stringify(conversation), {
     access: 'public',
     addRandomSuffix: false,
     allowOverwrite: true,
@@ -48,8 +62,13 @@ async function saveConversation(chatId: string, conversation: Conversation) {
   });
 }
 
-async function deleteConversation(chatId: string) {
-  await del(`${CHATS_PREFIX}${chatId}.json`);
+async function deleteConversation(scope: string, chatId: string) {
+  await del(`${scopePrefix(scope)}${chatId}.json`);
+}
+
+function sessionCookieHeader(email: string) {
+  const secure = process.env.VERCEL ? '; Secure' : '';
+  return `${SESSION_COOKIE}=${createSessionCookie(email)}; Path=/; Max-Age=${SESSION_MAX_AGE}; HttpOnly; SameSite=Lax${secure}`;
 }
 
 function describeInvalidToolCall(call: any): string {
@@ -102,8 +121,8 @@ function deliverablesSatisfied(deliverables: string[]): StopCondition<ToolSet> {
   };
 }
 
-app.get('/chats', async (_req: Request, res: Response) => {
-  const entries = await listConversations();
+app.get('/chats', async (req: Request, res: Response) => {
+  const entries = await listConversations(getScope(req));
   const chats = entries.map(({ chatId, conversation }) => ({
     chatId,
     preview: conversation.title ?? conversation.messages[0]?.content.slice(0, 60) ?? 'New chat',
@@ -112,13 +131,14 @@ app.get('/chats', async (_req: Request, res: Response) => {
 });
 
 app.get('/chats/:chatId', async (req: Request, res: Response) => {
-  const conversation = await loadConversation(String(req.params.chatId));
+  const conversation = await loadConversation(getScope(req), String(req.params.chatId));
   res.json(conversation?.messages ?? []);
 });
 
 app.patch('/chats/:chatId', async (req: Request, res: Response) => {
+  const scope = getScope(req);
   const chatId = String(req.params.chatId);
-  const conversation = await loadConversation(chatId);
+  const conversation = await loadConversation(scope, chatId);
   if (!conversation) {
     res.status(404).json({ error: 'No chat with that id.' });
     return;
@@ -131,23 +151,75 @@ app.patch('/chats/:chatId', async (req: Request, res: Response) => {
   }
 
   conversation.title = title;
-  await saveConversation(chatId, conversation);
+  await saveConversation(scope, chatId, conversation);
   res.json({ chatId, title });
 });
 
 app.delete('/chats/:chatId', async (req: Request, res: Response) => {
+  const scope = getScope(req);
   const chatId = String(req.params.chatId);
-  const conversation = await loadConversation(chatId);
+  const conversation = await loadConversation(scope, chatId);
   if (!conversation) {
     res.status(404).json({ error: 'No chat with that id.' });
     return;
   }
 
-  await deleteConversation(chatId);
+  await deleteConversation(scope, chatId);
   res.json({ deleted: true });
 });
 
+app.post('/auth/request', async (req: Request, res: Response) => {
+  const email = String(req.body.email ?? '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ error: 'Enter a valid email address.' });
+    return;
+  }
+
+  const token = createMagicToken();
+  await put(`${MAGIC_PREFIX}${token}.json`, JSON.stringify({ email, expiresAt: Date.now() + MAGIC_TTL_MS }), {
+    access: 'public',
+    addRandomSuffix: false,
+    contentType: 'application/json',
+  });
+
+  const origin = `${req.protocol}://${req.get('host')}`;
+  await sendMagicLink(email, `${origin}/auth/verify?token=${token}`);
+
+  res.json({ sent: true });
+});
+
+app.get('/auth/verify', async (req: Request, res: Response) => {
+  const token = String(req.query.token ?? '');
+  const { blobs } = await list({ prefix: `${MAGIC_PREFIX}${token}.json`, limit: 1 });
+
+  if (blobs.length === 0) {
+    res.status(400).send('This sign-in link is invalid or has expired.');
+    return;
+  }
+
+  const data = await fetch(blobs[0].url).then((r) => r.json());
+  await del(blobs[0].pathname);
+
+  if (Date.now() > data.expiresAt) {
+    res.status(400).send('This sign-in link has expired. Request a new one.');
+    return;
+  }
+
+  res.setHeader('Set-Cookie', sessionCookieHeader(data.email));
+  res.redirect('/');
+});
+
+app.post('/auth/signout', (_req: Request, res: Response) => {
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=; Path=/; Max-Age=0`);
+  res.json({ signedOut: true });
+});
+
+app.get('/auth/me', (req: Request, res: Response) => {
+  res.json({ email: verifySessionCookie(parseCookies(req.headers.cookie)[SESSION_COOKIE]) });
+});
+
 app.post('/chat', async (req: Request, res: Response) => {
+  const scope = getScope(req);
   const { message, chatId } = req.body;
   const checkedDeliverables: string[] = Array.isArray(req.body.deliverables) ? req.body.deliverables : [];
   const deliverables = Array.from(new Set([...checkedDeliverables, ...inferDeliverables(message)]));
@@ -157,11 +229,11 @@ app.post('/chat', async (req: Request, res: Response) => {
   const requestedGraph = deliverables.includes('graph');
   const requestedOutput = requestedPdf || requestedCsv || requestedGraph;
 
-  const conversation: Conversation = (await loadConversation(chatId)) ?? { messages: [] };
+  const conversation: Conversation = (await loadConversation(scope, chatId)) ?? { messages: [] };
   const messages = conversation.messages;
 
   messages.push({ role: 'user', content: message });
-  await saveConversation(chatId, conversation);
+  await saveConversation(scope, chatId, conversation);
   resetLatestGraph();
 
   res.setHeader('Content-Type', 'text/event-stream');
@@ -298,7 +370,7 @@ Rules:
       files: files.length > 0 ? files : undefined,
       images: images.length > 0 ? images : undefined,
     });
-    await saveConversation(chatId, conversation);
+    await saveConversation(scope, chatId, conversation);
 
     send('done', { text: outputText, files, images, usedSearch: true });
   } catch (error) {

@@ -147,6 +147,95 @@
     gap: 1px;
   }
 
+  .sidebar-account {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-soft);
+  }
+
+  .signin-btn {
+    width: 100%;
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 180ms var(--ease), background-color 180ms var(--ease);
+  }
+
+  .signin-btn:hover { border-color: var(--accent); background: var(--surface-2); }
+
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .auth-form input {
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .auth-form input:focus { outline: none; border-color: var(--accent); }
+
+  .auth-form button {
+    width: 100%;
+    height: 34px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+
+  .auth-note {
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .auth-note a {
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .account-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .account-email {
+    font-size: 12px;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .signout-btn {
+    flex-shrink: 0;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 180ms var(--ease), color 180ms var(--ease);
+  }
+
+  .signout-btn:hover { border-color: var(--danger); color: var(--danger); }
+
   .chat-item {
     display: flex;
     align-items: center;
@@ -759,6 +848,7 @@
     </button>
     <div class="chat-list-label">Recent</div>
     <div class="chat-list" id="chat-list"></div>
+    <div class="sidebar-account" id="sidebar-account"></div>
   </aside>
 
   <div class="main-panel">
@@ -818,6 +908,7 @@
     const sidebar = document.getElementById('sidebar');
     const sidebarBackdrop = document.getElementById('sidebar-backdrop');
     const menuBtn = document.getElementById('menu-btn');
+    const sidebarAccount = document.getElementById('sidebar-account');
     let chatId = Date.now().toString();
     deliverableInputs.forEach(input => { input.checked = false; });
 
@@ -838,6 +929,107 @@
 
     menuBtn.addEventListener('click', openSidebar);
     sidebarBackdrop.addEventListener('click', closeSidebar);
+
+    async function refreshAccount() {
+      const res = await fetch('/auth/me');
+      const { email } = await res.json();
+
+      if (email) {
+        renderSignedIn(email);
+      } else {
+        renderSignedOut();
+      }
+
+      return email;
+    }
+
+    function renderSignedOut() {
+      sidebarAccount.innerHTML = '';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'signin-btn';
+      btn.textContent = 'Sign in';
+      btn.addEventListener('click', renderSigninForm);
+      sidebarAccount.appendChild(btn);
+    }
+
+    function renderSigninForm() {
+      sidebarAccount.innerHTML = '';
+      const form = document.createElement('form');
+      form.className = 'auth-form';
+
+      const emailInput = document.createElement('input');
+      emailInput.type = 'email';
+      emailInput.placeholder = 'you@email.com';
+      emailInput.required = true;
+      emailInput.autocomplete = 'email';
+
+      const submitBtn = document.createElement('button');
+      submitBtn.type = 'submit';
+      submitBtn.textContent = 'Send sign-in link';
+
+      form.appendChild(emailInput);
+      form.appendChild(submitBtn);
+      sidebarAccount.appendChild(form);
+      emailInput.focus();
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending…';
+
+        const res = await fetch('/auth/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailInput.value }),
+        });
+
+        if (res.ok) {
+          renderSignInSent(emailInput.value);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          submitBtn.disabled = false;
+          submitBtn.textContent = data.error || 'Try again';
+        }
+      });
+    }
+
+    function renderSignInSent(email) {
+      sidebarAccount.innerHTML = '';
+      const note = document.createElement('div');
+      note.className = 'auth-note';
+      note.innerHTML = 'Check <strong>' + email + '</strong> for a sign-in link. <a>Use a different email</a>';
+      note.querySelector('a').addEventListener('click', renderSigninForm);
+      sidebarAccount.appendChild(note);
+    }
+
+    function renderSignedIn(email) {
+      sidebarAccount.innerHTML = '';
+      const row = document.createElement('div');
+      row.className = 'account-row';
+
+      const emailEl = document.createElement('div');
+      emailEl.className = 'account-email';
+      emailEl.textContent = email;
+      emailEl.title = email;
+
+      const signOutBtn = document.createElement('button');
+      signOutBtn.type = 'button';
+      signOutBtn.className = 'signout-btn';
+      signOutBtn.textContent = 'Sign out';
+      signOutBtn.addEventListener('click', async () => {
+        await fetch('/auth/signout', { method: 'POST' });
+        setChatId(Date.now().toString());
+        log.innerHTML = '';
+        log.appendChild(emptyState);
+        await refreshAccount();
+        loadChatList();
+      });
+
+      row.appendChild(emailEl);
+      row.appendChild(signOutBtn);
+      sidebarAccount.appendChild(row);
+    }
 
     function setStatus(state) {
       if (state === 'working') {
@@ -1279,6 +1471,7 @@
       loadChatList();
     }
 
+    refreshAccount();
     restoreLastChat();
   </script>
 
