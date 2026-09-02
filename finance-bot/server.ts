@@ -175,7 +175,7 @@ Rules:
 6. For a selected graph, call generateGraph with a valid bar or line type and real numeric points. Prefer several points over one - if the search results include a price history, plot multiple dates instead of just the latest price.
 7. For a selected PDF, the content field must be several full sentences or paragraphs, not a single line - cover the figure itself, what it means, and any other real facts or news from the search results. A one-sentence report is not acceptable. If there's a real price history or other numeric series in the search results, pass chartType and chartPoints to exportPdf so the report includes its own chart.
 8. For a selected CSV, include every useful real numeric value in rows.
-9. After all selected deliverables finish, reply with a short plain-prose confirmation only. Do not output the report, CSV, Markdown, or file contents in chat.
+9. After all selected deliverables finish, also tell the user what you found - a few real sentences with the actual figures and facts, in your own words, said directly in chat. Do not just say the files are ready with nothing else. Do not paste the full report, CSV, or Markdown into chat.
 10. Never use Markdown syntax (no **, #, bullet dashes, numbered lists, code fences). Reply in plain natural prose, every time.`;
 
     const tools = {
@@ -260,9 +260,26 @@ Rules:
       const gotCsv = !requestedCsv || files.some((file) => file.endsWith('.csv'));
       const gotGraph = !requestedGraph || images.length > 0;
 
-      outputText = gotPdf && gotCsv && gotGraph
-        ? 'Your selected deliverables are ready.'
-        : `I could not complete the selected deliverables. ${errors.join(' ') || 'A required tool did not finish.'}`;
+      if (gotPdf && gotCsv && gotGraph) {
+        const summaryResult = streamText({
+          model,
+          instructions: `You are a finance research assistant. The user asked: "${message}". You already generated the requested files (${deliverables.join(', ')}) from the search results below - do not describe making the files. Write a short chat reply, a few real sentences, sharing the actual figures and facts you found. Plain prose, no Markdown.\n\nSearch results:\n${JSON.stringify(searchData)}`,
+          maxRetries: 0,
+          messages: [{ role: 'user', content: message }],
+        });
+
+        let summaryText = '';
+        for await (const chunk of summaryResult.textStream) {
+          summaryText += chunk;
+          send('text', chunk);
+        }
+        if (!summaryText) summaryText = await summaryResult.text;
+
+        summaryText = summaryText.replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1');
+        outputText = summaryText.trim() || 'Your selected deliverables are ready.';
+      } else {
+        outputText = `I could not complete the selected deliverables. ${errors.join(' ') || 'A required tool did not finish.'}`;
+      }
     }
 
     messages.push({
