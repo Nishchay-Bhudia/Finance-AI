@@ -508,34 +508,57 @@
 
   @keyframes blink { 50% { opacity: 0; } }
 
-  .searching {
+  .typing-indicator {
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+  }
+
+  .typing-bubble {
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    font-size: 12.5px;
-    color: var(--muted);
-    padding: 4px 0;
+    gap: 4px;
+    padding: 12px 16px;
+    border-radius: 16px 16px 16px 4px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    animation: bubble-in 320ms var(--ease) both;
   }
 
-  .searching .dots {
-    display: flex;
-    gap: 3px;
+  @keyframes bubble-in {
+    from { opacity: 0; transform: scale(0.85); }
+    to { opacity: 1; transform: scale(1); }
   }
 
-  .searching .dots span {
-    width: 5px;
-    height: 5px;
+  .typing-bubble .dot {
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background: var(--accent);
-    animation: dot-bounce 1.1s ease-in-out infinite;
+    animation: dot-bounce 1.2s ease-in-out infinite;
   }
 
-  .searching .dots span:nth-child(2) { animation-delay: 0.15s; }
-  .searching .dots span:nth-child(3) { animation-delay: 0.3s; }
+  .typing-bubble .dot:nth-child(2) { animation-delay: 0.15s; }
+  .typing-bubble .dot:nth-child(3) { animation-delay: 0.3s; }
 
   @keyframes dot-bounce {
-    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
-    30% { transform: translateY(-4px); opacity: 1; }
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.45; }
+    30% { transform: translateY(-5px); opacity: 1; }
+  }
+
+  .thinking-word {
+    font-size: 11.5px;
+    font-family: var(--mono);
+    color: var(--muted-2);
+    padding-left: 4px;
+    letter-spacing: 0.01em;
+    animation: word-fade 320ms var(--ease) both;
+  }
+
+  @keyframes word-fade {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .sources-tag {
@@ -1106,18 +1129,41 @@
       log.scrollTop = log.scrollHeight;
     }
 
+    const THINKING_WORDS = ['Thinking', 'Pondering', 'Cooking', 'Crunching numbers', 'Digging through filings', 'Running the numbers', 'Consulting the ticker', 'Synthesizing', 'Mulling it over', 'Doing the math', 'Charting a course', 'Percolating', 'Connecting the dots', 'Sifting through data'];
+    let thinkingIntervalId = null;
+
     function addSearchingIndicator() {
       const msg = document.createElement('div');
-      msg.className = 'msg';
+      msg.className = 'msg typing-indicator';
       msg.id = 'searching-indicator';
-      const tag = document.createElement('div');
-      tag.className = 'searching';
-      tag.innerHTML = 'researching<span class="dots"><span></span><span></span><span></span></span>';
-      msg.appendChild(tag);
+
+      const bubble = document.createElement('div');
+      bubble.className = 'typing-bubble';
+      bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+
+      const word = document.createElement('div');
+      word.className = 'thinking-word';
+      let wordIndex = Math.floor(Math.random() * THINKING_WORDS.length);
+      word.textContent = THINKING_WORDS[wordIndex] + '…';
+
+      msg.appendChild(bubble);
+      msg.appendChild(word);
       addRow('assistant', msg);
+
+      thinkingIntervalId = setInterval(() => {
+        wordIndex = (wordIndex + 1) % THINKING_WORDS.length;
+        word.style.animation = 'none';
+        void word.offsetWidth;
+        word.style.animation = '';
+        word.textContent = THINKING_WORDS[wordIndex] + '…';
+      }, 1800);
     }
 
     function removeSearchingIndicator() {
+      if (thinkingIntervalId !== null) {
+        clearInterval(thinkingIntervalId);
+        thinkingIntervalId = null;
+      }
       const el = document.getElementById('searching-indicator');
       if (el) el.closest('.row').remove();
     }
@@ -1140,8 +1186,10 @@
             deliverables: Array.from(deliverableInputs).filter(input => input.checked).map(input => input.value),
           }),
         });
-        removeSearchingIndicator();
-        if (!res.ok || !res.body) throw new Error('The server did not return a response.');
+        if (!res.ok || !res.body) {
+          removeSearchingIndicator();
+          throw new Error('The server did not return a response.');
+        }
 
         setChatId(chatId);
         loadChatList();
@@ -1176,12 +1224,16 @@
               updateStreamingText(streaming, text);
             }
             if (type === 'done') {
+              removeSearchingIndicator();
               text = data.text || text;
               files = data.files || [];
               images = data.images || [];
               usedSearch = data.usedSearch;
             }
-            if (type === 'error') throw new Error(data);
+            if (type === 'error') {
+              removeSearchingIndicator();
+              throw new Error(data);
+            }
           }
 
           if (done) break;
