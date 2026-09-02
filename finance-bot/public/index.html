@@ -766,7 +766,7 @@
   button:active:not(:disabled) { transform: scale(0.92); }
   button:disabled { opacity: 0.3; cursor: default; }
 
-  .deliverables {
+  .chip-row {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -775,7 +775,7 @@
     margin-top: 12px;
   }
 
-  .deliverables > span {
+  .chip-row > span {
     margin-right: 6px;
     font-size: 10px;
     font-weight: 600;
@@ -931,7 +931,13 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </button>
       </form>
-      <div class="deliverables" aria-label="Deliverables">
+      <div class="chip-row depth" aria-label="Depth">
+        <span>Depth</span>
+        <label class="chip-toggle"><input type="radio" name="depth" value="fast" checked autocomplete="off"><span>Fast</span></label>
+        <label class="chip-toggle"><input type="radio" name="depth" value="standard" autocomplete="off"><span>Standard</span></label>
+        <label class="chip-toggle"><input type="radio" name="depth" value="deep" autocomplete="off"><span>Deep</span></label>
+      </div>
+      <div class="chip-row deliverables" aria-label="Deliverables">
         <span>Deliverables</span>
         <label class="chip-toggle"><input type="checkbox" value="pdf" autocomplete="off"><span>PDF</span></label>
         <label class="chip-toggle"><input type="checkbox" value="csv" autocomplete="off"><span>CSV</span></label>
@@ -1434,6 +1440,7 @@
             chatId,
             message,
             deliverables: Array.from(deliverableInputs).filter(input => input.checked).map(input => input.value),
+            depth: document.querySelector('input[name="depth"]:checked').value,
           }),
         });
         if (!res.ok || !res.body) {
