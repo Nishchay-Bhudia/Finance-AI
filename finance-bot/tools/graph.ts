@@ -1,9 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { Daytona } from '@daytona/sdk';
-import { writeFileSync, existsSync, mkdirSync } from 'node:fs';
-
-const output = './outputs';
+import { put } from '@vercel/blob';
 
 export let latestGraphFilename: string | undefined ;
 
@@ -165,17 +163,20 @@ export const generateGraph = tool({
     ).min(1).describe('Real numeric data points from searchFinance'),
   }),
   execute: async ({ title, type, points }) => {
-    if (!existsSync(output)) mkdirSync(output);
-
     try {
       const fileBuffer = await makeChartImage(title, type, points);
 
       const safeName = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const filename = `${safeName}-${Date.now()}.png`;
-      writeFileSync(`${output}/${filename}`, fileBuffer);
+      const blob = await put(`files/${filename}`, fileBuffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType: 'image/png',
+      });
       latestGraphFilename = filename;
 
-      return { filename };
+      return { filename, url: blob.url, downloadUrl: blob.downloadUrl };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { error: `graph generation failed: ${message}` };

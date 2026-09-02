@@ -1,9 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { put } from '@vercel/blob';
 import { runPythonAndDownloadFile } from './graph.js';
-
-const output = './outputs';
 
 export const exportCsv = tool({
   description:
@@ -18,8 +16,6 @@ export const exportCsv = tool({
     ).describe('One object per row of the CSV'),
   }),
   execute: async ({ title, rows }) => {
-    if (!existsSync(output)) mkdirSync(output);
-
     const pythonCode = `
 import csv
 
@@ -37,9 +33,14 @@ with open("data.csv", "w", newline="") as f:
 
       const safeName = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const filename = `${safeName}-${Date.now()}.csv`;
-      writeFileSync(`${output}/${filename}`, fileBuffer);
+      const blob = await put(`files/${filename}`, fileBuffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType: 'text/csv',
+      });
 
-      return { filename };
+      return { filename, url: blob.url, downloadUrl: blob.downloadUrl };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { error: `csv generation failed: ${message}` };

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Finance Assistant</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
@@ -951,22 +952,21 @@
         const fileRow = document.createElement('div');
         fileRow.className = 'files';
         files.forEach(f => {
-          const ext = f.split('.').pop().toUpperCase();
+          const ext = f.name.split('.').pop().toUpperCase();
           const card = document.createElement('div');
           card.className = 'file-card';
 
           const view = document.createElement('a');
           view.className = 'file-chip';
-          view.href = '/outputs/' + f;
+          view.href = f.url;
           view.target = '_blank';
-          view.innerHTML = '<span class="ext">' + ext + '</span><span>' + f + '</span>';
+          view.innerHTML = '<span class="ext">' + ext + '</span><span>' + f.name + '</span>';
 
           const download = document.createElement('a');
           download.className = 'file-download';
-          download.href = '/outputs/' + f;
-          download.download = f;
-          download.title = 'Download ' + f;
-          download.setAttribute('aria-label', 'Download ' + f);
+          download.href = f.downloadUrl;
+          download.title = 'Download ' + f.name;
+          download.setAttribute('aria-label', 'Download ' + f.name);
           download.innerHTML = DOWNLOAD_ICON;
 
           card.appendChild(view);
@@ -980,7 +980,7 @@
         images.forEach(image => {
           const chart = document.createElement('img');
           chart.className = 'chat-image';
-          chart.src = '/outputs/' + image;
+          chart.src = image.url;
           chart.alt = 'Generated financial graph';
           msg.appendChild(chart);
         });
