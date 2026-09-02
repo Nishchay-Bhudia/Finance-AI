@@ -1,12 +1,13 @@
 {
   "name": "finance-bot",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A finance research chat app backed by live search, sandboxed report generation, and Vercel Blob storage.",
+  "main": "server.ts",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
+    "dev": "tsx server.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
