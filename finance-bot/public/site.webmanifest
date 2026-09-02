@@ -1,0 +1,11 @@
+{
+  "name": "Finance Assistant",
+  "short_name": "Finance",
+  "icons": [
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ],
+  "theme_color": "#1c2b45",
+  "background_color": "#f7f5ee",
+  "display": "standalone"
+}
