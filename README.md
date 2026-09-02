@@ -1,5 +1,11 @@
 # Finance Assistant
 
+[![Live demo](https://img.shields.io/badge/live_demo-finance--agent-1c1c1c?style=flat-square)](https://finance-agent-theta-ochre.vercel.app)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Express](https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white)](https://expressjs.com/)
+[![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com/)
+[![Mistral AI](https://img.shields.io/badge/Model-Mistral_AI-ff7000?style=flat-square)](https://mistral.ai/)
+
 A finance research chat app. Ask it about a stock, a company, or a market, and it answers using live search data instead of whatever the model already "knows." It can also turn that research into a PDF report, a CSV export, or a chart, generated on the fly, and it remembers your conversations if you sign in.
 
 Live at [finance-agent-theta-ochre.vercel.app](https://finance-agent-theta-ochre.vercel.app).
