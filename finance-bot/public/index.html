@@ -89,6 +89,8 @@
     font-family: inherit;
     text-align: left;
     white-space: nowrap;
+    width: auto;
+    height: auto;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -463,7 +465,15 @@
     margin-top: 4px;
   }
 
+  .file-card {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+  }
+
   .file-chip {
+    flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -476,6 +486,14 @@
     font-weight: 500;
     text-decoration: none;
     transition: border-color 160ms var(--ease), transform 140ms var(--ease), box-shadow 160ms var(--ease);
+  }
+
+  .file-chip span:last-child {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .file-chip:hover {
@@ -498,6 +516,27 @@
     letter-spacing: 0.02em;
     flex-shrink: 0;
   }
+
+  .file-download {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    flex-shrink: 0;
+    border-radius: 13px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    text-decoration: none;
+    transition: border-color 160ms var(--ease), background-color 160ms var(--ease), transform 140ms var(--ease);
+  }
+
+  .file-download:hover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .file-download:active { transform: scale(0.94); }
 
   .chat-image {
     display: block;
@@ -532,7 +571,7 @@
     transition: border-color 200ms var(--ease), box-shadow 200ms var(--ease);
   }
 
-  form:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  form:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(28, 43, 69, 0.08), 0 10px 26px -14px rgba(28, 43, 69, 0.35); }
 
   input {
     flex: 1;
@@ -637,6 +676,8 @@
     outline: 2px solid var(--accent-ring);
     outline-offset: 2px;
   }
+
+  #input:focus-visible { outline: none; }
 </style>
 </head>
 <body>
@@ -671,6 +712,9 @@
           <div class="example-chip" data-q="What is Apple's current stock price?">What is Apple's current stock price?</div>
           <div class="example-chip" data-q="Compare Tesla and Ford's latest earnings">Compare Tesla and Ford's latest earnings</div>
           <div class="example-chip" data-q="Export Nvidia's recent stock data as a CSV">Export Nvidia's recent stock data as a CSV</div>
+          <div class="example-chip" data-q="Give me a report on Amazon's stock price over the past week">Give me a report on Amazon's stock price over the past week</div>
+          <div class="example-chip" data-q="Graph Microsoft's stock price over the past month">Graph Microsoft's stock price over the past month</div>
+          <div class="example-chip" data-q="What's driving Nvidia's stock movement this week?">What's driving Nvidia's stock movement this week?</div>
         </div>
       </div>
     </main>
@@ -900,18 +944,34 @@
       addRow('user', msg);
     }
 
+    const DOWNLOAD_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+
     function appendFilesAndImages(msg, files, images) {
       if (files && files.length) {
         const fileRow = document.createElement('div');
         fileRow.className = 'files';
         files.forEach(f => {
           const ext = f.split('.').pop().toUpperCase();
-          const a = document.createElement('a');
-          a.className = 'file-chip';
-          a.href = '/outputs/' + f;
-          a.target = '_blank';
-          a.innerHTML = '<span class="ext">' + ext + '</span>' + f;
-          fileRow.appendChild(a);
+          const card = document.createElement('div');
+          card.className = 'file-card';
+
+          const view = document.createElement('a');
+          view.className = 'file-chip';
+          view.href = '/outputs/' + f;
+          view.target = '_blank';
+          view.innerHTML = '<span class="ext">' + ext + '</span><span>' + f + '</span>';
+
+          const download = document.createElement('a');
+          download.className = 'file-download';
+          download.href = '/outputs/' + f;
+          download.download = f;
+          download.title = 'Download ' + f;
+          download.setAttribute('aria-label', 'Download ' + f);
+          download.innerHTML = DOWNLOAD_ICON;
+
+          card.appendChild(view);
+          card.appendChild(download);
+          fileRow.appendChild(card);
         });
         msg.appendChild(fileRow);
       }
